@@ -1,0 +1,2 @@
+flex --prefix=yy -o AmberMask.yy.c AmberMask.l
+bison --name-prefix=yy -d -b AmberMask AmberMask.y

@@ -1,0 +1,10 @@
+// =============================================================================
+// ASL - Amber Support Library
+// -----------------------------------------------------------------------------
+
+2008-12-04
+    topology cut - proper initialization of first solvent molecule
+
+2008-09-16
+    mask: wild card '=' in the selection of atom, residue and type names was implemented
+
