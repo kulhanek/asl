@@ -712,6 +712,22 @@ void CAmberRestart::operator = (const CAmberRestart& src)
     }
 }
 
+//------------------------------------------------------------------------------
+
+double* CAmberRestart::GetCoordinatesBuffer(void)
+{
+    if( Positions == NULL ) return(NULL);
+    return( &(Positions->x) );
+}
+
+//------------------------------------------------------------------------------
+
+double* CAmberRestart::GetVelocitiesBuffer(void)
+{
+    if( Velocities == NULL ) return(NULL);
+    return( &(Velocities->x) );
+}
+
 //==============================================================================
 //------------------------------------------------------------------------------
 //==============================================================================

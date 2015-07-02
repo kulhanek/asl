@@ -127,6 +127,12 @@ public:
     /// overload assigment operator
     void operator = (const CAmberRestart& src);
 
+    /// get coordinates buffer - interface to FORTRAN
+    double* GetCoordinatesBuffer(void);
+
+    /// get velocities buffer - interface to FORTRAN
+    double* GetVelocitiesBuffer(void);
+
 // section of private data ----------------------------------------------------
 private:
     CAmberTopology* Topology;
