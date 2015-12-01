@@ -23,7 +23,7 @@
 #include <AmberBox.hpp>
 #include <FortranIO.hpp>
 #include <ErrorSystem.hpp>
-#include <values.h>
+#include <limits.h>
 #include <float.h>
 
 //==============================================================================
