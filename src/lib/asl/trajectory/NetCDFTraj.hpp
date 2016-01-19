@@ -89,12 +89,14 @@ private:
     int                     CoordinateDID;
     float*                  Coordinates;
 
+    int                     CellSpatialVID;
+    int                     CellSpatialDID;
     int                     CellLengthVID;
-    int                     CellLengthDID;
     double                  CellLength[3];
 
+    int                     CellAngularVID;
+    int                     CellAngularDID;
     int                     CellAngleVID;
-    int                     CellAngleDID;
     double                  CellAngle[3];
 
     int                     LabelDID;

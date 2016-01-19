@@ -59,10 +59,13 @@ CNetCDFTraj::CNetCDFTraj(void)
     CoordinateDID = -1;
     Coordinates = NULL;
 
+    CellSpatialVID = -1;
+    CellSpatialDID = -1;
+    CellAngularVID = -1;
+    CellAngularDID = -1;
+
     CellLengthVID = -1;
-    CellLengthDID = -1;
     CellAngleVID = -1;
-    CellAngleDID = -1;
 
     TimeVID = -1;
     TimeDID = -1;
@@ -278,8 +281,8 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
     DefineDimension(AMBER_NETCDF_SPATIAL, 3, &SpatialDID);
     DefineDimension(AMBER_NETCDF_ATOM, ActualAtoms, &CoordinateDID);
     DefineDimension(AMBER_NETCDF_LABEL, AMBER_NETCDF_LABELLEN, &LabelDID);
-    DefineDimension(AMBER_NETCDF_CELL_SPATIAL, 3, &CellLengthDID);
-    DefineDimension(AMBER_NETCDF_CELL_ANGULAR, 3, &CellAngleDID);
+    DefineDimension(AMBER_NETCDF_CELL_SPATIAL, 3, &CellSpatialDID);
+    DefineDimension(AMBER_NETCDF_CELL_ANGULAR, 3, &CellAngularDID);
 
     // put global attributes
     Conventions =  "AMBER";
@@ -306,23 +309,23 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
     DefineVariable(AMBER_NETCDF_COORDS, NC_FLOAT, 3, dimensionID, &CoordinateVID);
     PutAttributeText(CoordinateVID, "units", "angstrom");
 
-    dimensionID[0] = CellLengthDID;
-    DefineVariable(AMBER_NETCDF_CELL_SPATIAL, NC_CHAR, 1, dimensionID, &CellLengthVID);
+    dimensionID[0] = CellSpatialDID;
+    DefineVariable(AMBER_NETCDF_CELL_SPATIAL, NC_CHAR, 1, dimensionID, &CellSpatialVID);
 
-    dimensionID[0] = CellAngleDID;
+    dimensionID[0] = CellAngularDID;
     dimensionID[1] = LabelDID;
-    DefineVariable(AMBER_NETCDF_CELL_ANGULAR, NC_CHAR, 2, dimensionID, &CellAngleVID);
+    DefineVariable(AMBER_NETCDF_CELL_ANGULAR, NC_CHAR, 2, dimensionID, &CellAngularVID);
 
     // set up box coords
     HasBox = p_top->BoxInfo.GetType() != AMBER_BOX_NONE;
 
     if( HasBox ) {
         dimensionID[0] = TimeDID;
-        dimensionID[1] = CellLengthDID;
+        dimensionID[1] = CellSpatialDID;
         DefineVariable("cell_lengths", NC_DOUBLE, 2, dimensionID, &CellLengthVID);
         PutAttributeText(CellLengthVID, "units", "angstrom");
 
-        dimensionID[1] = CellAngleDID;
+        dimensionID[1] = CellAngularDID;
         DefineVariable("cell_angles", NC_DOUBLE, 2, dimensionID, &CellAngleVID);
         PutAttributeText(CellAngleVID, "units", "degree");
     }
@@ -373,7 +376,7 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
     xyz[0] = 'a';
     xyz[1] = 'b';
     xyz[2] = 'c';
-    err = nc_put_vara_text(NCID, CellLengthVID, start, count, xyz);
+    err = nc_put_vara_text(NCID, CellSpatialVID, start, count, xyz);
     if (err != NC_NOERR) {
         CSmallString error;
         error << "unable to set spatial cell VID 'a', 'b' and 'c' (" << nc_strerror(err) << ")";
@@ -385,7 +388,7 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
     start[1] = 0;
     count[0] = 3;
     count[1] = 5;
-    err = nc_put_vara_text(NCID, CellAngleVID, start, count, abc);
+    err = nc_put_vara_text(NCID, CellAngularVID, start, count, abc);
     if (err != NC_NOERR) {
         CSmallString error;
         error << "unable to set angular cell VID 'alpha', 'beta ' and 'gamma' (" << nc_strerror(err) << ")";
