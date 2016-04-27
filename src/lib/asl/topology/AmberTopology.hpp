@@ -111,6 +111,9 @@ public:
 
     /// overload assigment operator
     void operator = (const CAmberTopology& src);
+    
+    /// get total mass
+    double GetTotalMass(void);
 
 // section o public data ------------------------------------------------------
 public:
@@ -140,6 +143,9 @@ private:
 
     /// NPARM  : currently not used
     int NPARM;
+    
+    // total mass in g/mol
+    double      TotalMass;
 
     // local copy of formats
     CSmallString fTITLE;

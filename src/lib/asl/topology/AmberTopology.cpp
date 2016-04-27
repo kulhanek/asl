@@ -41,6 +41,7 @@ CAmberTopology::CAmberTopology(void)
     Version = AMBER_VERSION_7;
     NHPARM = 0;
     NPARM = 0;
+    TotalMass = 0;
 
     // amber_7 defaults
     fTITLE="20a4";
@@ -291,6 +292,17 @@ void CAmberTopology::BuidListOfNeighbourAtoms(void)
         CAmberAtom* p_at2 = AtomList.GetAtom(at2);
         p_at2->NeighbourIndexes.insert(at1);
     }
+}
+
+//------------------------------------------------------------------------------
+
+double CAmberTopology::GetTotalMass(void)
+{
+    if( TotalMass > 0.0 ) return(TotalMass);
+    for(int i = 0; i < AtomList.GetNumberOfAtoms(); i++){
+        TotalMass += AtomList.GetAtom(i)->GetMass();
+    }
+    return(TotalMass);
 }
 
 //------------------------------------------------------------------------------
