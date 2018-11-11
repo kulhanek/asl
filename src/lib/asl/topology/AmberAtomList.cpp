@@ -127,6 +127,9 @@ void CAmberAtomList::operator = (const CAmberAtomList& src)
     // copy name of radius set
     RadiusSet = src.RadiusSet;
 
+    // do we have atomic numbers?
+    AtomicNumberLoaded = src.AtomicNumberLoaded;
+
     // copy atoms
     for(int i=0; i<NATOM; i++){
         Atoms[i] = src.Atoms[i];
