@@ -31,6 +31,16 @@
 
 class CAmberTopology;
 class CXMLElement;
+class CNetCDFRst;
+
+//---------------------------------------------------------------------------
+
+/// restart format
+enum ERestartFormat {
+    AMBER_RST_UNKNOWN,
+    AMBER_RST_ASCII,
+    AMBER_RST_NETCDF
+};
 
 //---------------------------------------------------------------------------
 
@@ -59,15 +69,18 @@ public:
     CAmberTopology* GetTopology(void);
 
     /// load coordinates - velocities and box if present
-    bool Load(const CSmallString& name,bool allow_stdin=false);
+    bool Load(const CSmallString& name,bool allow_stdin=false,ERestartFormat format=AMBER_RST_ASCII);
 
     /// save coordinates - velocities and box if present
-    bool Save(const CSmallString& name,bool allow_stdout=false);
+    bool Save(const CSmallString& name,bool allow_stdout=false,ERestartFormat format=AMBER_RST_ASCII);
 
-    /// load coordinates - velocities and box if present
+    /// get restart format
+    ERestartFormat   GetFormat(void);
+
+    /// load coordinates - velocities and box if present (only ASCII format)
     bool Load(FILE *fin);
 
-    /// save coordinates - velocities and box if present
+    /// save coordinates - velocities and box if present (only ASCII format)
     bool Save(FILE *fout);
 
     /// load only coordinates from XML record
@@ -144,6 +157,7 @@ private:
     CPoint          Box;    // box dimensions
     CPoint          Box1;   // box angles
     bool            VelocitiesLoaded;
+    ERestartFormat  Format;
 
     static CPoint zero;
 

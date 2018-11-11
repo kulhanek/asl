@@ -1,5 +1,5 @@
-#ifndef NetCDFTrajH
-#define NetCDFTrajH
+#ifndef NetCDFRstH
+#define NetCDFRstH
 // =============================================================================
 // ASL - Amber Support Library
 // -----------------------------------------------------------------------------
@@ -29,14 +29,14 @@
 
 /// trajectory file IO master class
 
-class ASL_PACKAGE CNetCDFTraj :  public CNetCDFFile {
+class ASL_PACKAGE CNetCDFRst :  public CNetCDFFile {
 public:
-    CNetCDFTraj(void);
-    ~CNetCDFTraj(void);
+    CNetCDFRst(void);
+    ~CNetCDFRst(void);
 
 // executive methods ----------------------------------------------------------
     /// open trajectory file
-    bool Open(const CSmallString& name,ETrajectoryOpenMode mode);
+    bool Open(const CSmallString& name,char mode);
 
     /// read header
     bool ReadHeader(CAmberTopology* p_top);
@@ -52,7 +52,7 @@ public:
 
 // section of private data -----------------------------------------------------
 private:
-    ETrajectoryOpenMode     Mode;
+    char                    Mode;  // 'r' - read, 'w' - write
 
     // header
     CSmallString            Title;
@@ -62,7 +62,6 @@ private:
     CSmallString            Conventions;
     CSmallString            ConventionVersion;
 
-    int                     TotalSnapshots;
     int                     ActualAtoms;
     int                     NumOfTopologyAtoms;
     bool                    HasBox;
@@ -71,10 +70,13 @@ private:
     int                     SpatialDID;
     int                     Spatial;
 
-    int                     CurrentSnapshot;
     int                     CoordinateVID;
     int                     CoordinateDID;
-    float*                  Coordinates;
+    double*                 Coordinates;
+
+    int                     VelocityVID;
+    int                     VelocityDID;
+    double*                 Velocities;
 
     int                     CellSpatialVID;
     int                     CellSpatialDID;
@@ -90,7 +92,16 @@ private:
 
     int                     TimeVID;
     int                     TimeDID;
-    float                   Time;
+    double                  Time;
+
+
+    int                     RemdRepIDXVID;
+    int                     RemdRepIDXDID;
+    double                  RemdRepIDX;
+
+    int                     RemdCrdIDXVID;
+    int                     RemdCrdIDXDID;
+    double                  RemdCrdIDX;
 
     friend class CAmberTrajectory;
 };

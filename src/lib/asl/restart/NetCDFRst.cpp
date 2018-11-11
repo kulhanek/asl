@@ -22,7 +22,7 @@
 // used files: netcdf_ptraj.c netcdf_ptraj.h and trajectory.h
 //------------------------------------------------------------------------------
 
-#include <NetCDFTraj.hpp>
+#include <NetCDFRst.hpp>
 #include <ErrorSystem.hpp>
 #include <AmberRestart.hpp>
 #include <AmberTopology.hpp>
@@ -42,21 +42,23 @@
 //------------------------------------------------------------------------------
 //==============================================================================
 
-CNetCDFTraj::CNetCDFTraj(void)
+CNetCDFRst::CNetCDFRst(void)
 {
-    Mode = AMBER_TRAJ_READ;
+    Mode = 'r';
 
     SpatialVID = -1;
     SpatialDID = -1;
 
-    TotalSnapshots = 0;
     Spatial = 0;
     ActualAtoms = 0;
 
-    CurrentSnapshot = 0;
     CoordinateVID = -1;
     CoordinateDID = -1;
     Coordinates = NULL;
+
+    VelocityVID = -1;
+    VelocityDID = -1;
+    Velocities = NULL;
 
     CellSpatialVID = -1;
     CellSpatialDID = -1;
@@ -76,38 +78,29 @@ CNetCDFTraj::CNetCDFTraj(void)
 
 //---------------------------------------------------------------------------
 
-CNetCDFTraj::~CNetCDFTraj(void)
+CNetCDFRst::~CNetCDFRst(void)
 {
     if( Coordinates != NULL ) delete[] Coordinates;
+    if( Velocities != NULL ) delete[] Velocities;
 }
 
 //==============================================================================
 //------------------------------------------------------------------------------
 //==============================================================================
 
-bool CNetCDFTraj::Open(const CSmallString& name,ETrajectoryOpenMode mode)
+bool CNetCDFRst::Open(const CSmallString& name,char mode)
 {
     if( NCID >= 0 ) {
         ES_ERROR("file is already opened");
         return(false);
     }
     Mode = mode;
-
-    if( Mode == AMBER_TRAJ_READ ) {
-        return(CNetCDFFile::Open(name,'r'));
-    }
-
-    if( Mode == AMBER_TRAJ_WRITE ) {
-        return(CNetCDFFile::Open(name,'w'));
-    }
-
-    ES_ERROR("unsupported mode");
-    return(false);
+    return(CNetCDFFile::Open(name,mode));
 }
 
 //------------------------------------------------------------------------------
 
-bool CNetCDFTraj::ReadHeader(CAmberTopology* p_top)
+bool CNetCDFRst::ReadHeader(CAmberTopology* p_top)
 {
     if( p_top == NULL ){
         INVALID_ARGUMENT("p_top == NULL");
@@ -130,9 +123,9 @@ bool CNetCDFTraj::ReadHeader(CAmberTopology* p_top)
     result &= GetVariableAttribute(NC_GLOBAL,"Conventions",Conventions);
     result &= GetVariableAttribute(NC_GLOBAL,"ConventionVersion",ConventionVersion);
 
-    if( Conventions != "AMBER" ) {
+    if( Conventions != "AMBERRESTART" ) {
         CSmallString error;
-        error << "illegal conventions '" << Conventions << "', expecting 'AMBER'";
+        error << "illegal conventions '" << Conventions << "', expecting 'AMBERRESTART'";
         ES_ERROR(error);
         return(false);
     }
@@ -143,7 +136,6 @@ bool CNetCDFTraj::ReadHeader(CAmberTopology* p_top)
         return(false);
     }
 
-    GetDimensionInfo("frame", &TotalSnapshots);
     GetDimensionInfo("spatial", &Spatial);
     GetDimensionInfo("atom", &ActualAtoms);
 
@@ -222,11 +214,15 @@ bool CNetCDFTraj::ReadHeader(CAmberTopology* p_top)
         return(false);
     }
 
-    CurrentSnapshot = 0;
     if( Coordinates != NULL ) {
         delete Coordinates;
     }
-    Coordinates = new float[ActualAtoms*3];
+    Coordinates = new double[ActualAtoms*3];
+
+    if( Velocities != NULL ) {
+        delete Velocities;
+    }
+    Velocities = new double[ActualAtoms*3];
 
     // sanity check - box ----------------------------------
     if( HasBox ){
@@ -240,7 +236,7 @@ bool CNetCDFTraj::ReadHeader(CAmberTopology* p_top)
 
 //------------------------------------------------------------------------------
 
-bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
+bool CNetCDFRst::WriteHeader(CAmberTopology* p_top)
 {
     if( p_top == NULL ){
         INVALID_ARGUMENT("p_top == NULL");
@@ -256,23 +252,27 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
     NumOfTopologyAtoms = p_top->AtomList.GetNumberOfAtoms();
     ActualAtoms = NumOfTopologyAtoms;
 
-    CurrentSnapshot = 0;
-    TotalSnapshots = 0;
     if( Coordinates != NULL ) {
         delete Coordinates;
     }
-    Coordinates = new float[ActualAtoms*3];
+    Coordinates = new double[ActualAtoms*3];
+
+    if( Velocities != NULL ) {
+        delete Velocities;
+    }
+    Velocities = new double[ActualAtoms*3];
 
     // global dimmensions
     DefineDimension(AMBER_NETCDF_FRAME, NC_UNLIMITED, &TimeDID);
     DefineDimension(AMBER_NETCDF_SPATIAL, 3, &SpatialDID);
     DefineDimension(AMBER_NETCDF_ATOM, ActualAtoms, &CoordinateDID);
+    DefineDimension(AMBER_NETCDF_ATOM, ActualAtoms, &VelocityDID);
     DefineDimension(AMBER_NETCDF_LABEL, AMBER_NETCDF_LABELLEN, &LabelDID);
     DefineDimension(AMBER_NETCDF_CELL_SPATIAL, 3, &CellSpatialDID);
     DefineDimension(AMBER_NETCDF_CELL_ANGULAR, 3, &CellAngularDID);
 
     // put global attributes
-    Conventions =  "AMBER";
+    Conventions =  "AMBERRESTART";
     ConventionVersion = "1.0";
 
     PutAttributeText(NC_GLOBAL, "title", Title);
@@ -290,11 +290,16 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
     DefineVariable(AMBER_NETCDF_TIME, NC_FLOAT, 1, dimensionID, &TimeVID);
     PutAttributeText(TimeVID, "units", "picosecond");
 
-    dimensionID[0] = TimeDID;
-    dimensionID[1] = CoordinateDID;
-    dimensionID[2] = SpatialDID;
-    DefineVariable(AMBER_NETCDF_COORDS, NC_FLOAT, 3, dimensionID, &CoordinateVID);
+    dimensionID[0] = CoordinateDID;
+    dimensionID[1] = SpatialDID;
+    DefineVariable(AMBER_NETCDF_COORDS, NC_FLOAT, 2, dimensionID, &CoordinateVID);
     PutAttributeText(CoordinateVID, "units", "angstrom");
+
+    dimensionID[0] = VelocityDID;
+    dimensionID[1] = SpatialDID;
+    DefineVariable(AMBER_NETCDF_COORDS, NC_FLOAT, 2, dimensionID, &VelocityVID);
+    PutAttributeText(VelocityVID, "units", "angstrom/picosecond");
+// velocities:scale_factor = 20.455 ; FIXME
 
     dimensionID[0] = CellSpatialDID;
     DefineVariable(AMBER_NETCDF_CELL_SPATIAL, NC_CHAR, 1, dimensionID, &CellSpatialVID);
@@ -307,13 +312,12 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
     HasBox = p_top->BoxInfo.GetType() != AMBER_BOX_NONE;
 
     if( HasBox ) {
-        dimensionID[0] = TimeDID;
-        dimensionID[1] = CellSpatialDID;
-        DefineVariable("cell_lengths", NC_DOUBLE, 2, dimensionID, &CellLengthVID);
+        dimensionID[0] = CellSpatialDID;
+        DefineVariable("cell_lengths", NC_DOUBLE, 1, dimensionID, &CellLengthVID);
         PutAttributeText(CellLengthVID, "units", "angstrom");
 
-        dimensionID[1] = CellAngularDID;
-        DefineVariable("cell_angles", NC_DOUBLE, 2, dimensionID, &CellAngleVID);
+        dimensionID[0] = CellAngularDID;
+        DefineVariable("cell_angles", NC_DOUBLE, 1, dimensionID, &CellAngleVID);
         PutAttributeText(CellAngleVID, "units", "degree");
     }
 
@@ -388,10 +392,10 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
 
 //------------------------------------------------------------------------------
 
-bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
+bool CNetCDFRst::ReadSnapshot(CAmberRestart* p_snap)
 {
-    if( Mode != AMBER_TRAJ_READ ){
-        ES_ERROR("illegal mode, it should be AMBER_TRAJ_READ");
+    if( Mode != 'r' ){
+        ES_ERROR("illegal mode, it should be 'r'");
         return(false);
     }
 
@@ -434,20 +438,16 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
         return(false);
     }
 
-    if( CurrentSnapshot >= TotalSnapshots ) return(false); // end of trajectory
-
     int     err;
-    size_t  start[3],count[3];
+    size_t  start[2],count[2];
 
     // coordinates -------------------------------
-    start[0] = CurrentSnapshot;
+    start[0] = 0;
+    count[0] = ActualAtoms;
     start[1] = 0;
-    start[2] = 0;
-    count[0] = 1;
-    count[1] = ActualAtoms;
-    count[2] = 3;
+    count[1] = 3;
 
-    err = nc_get_vara_float(NCID,CoordinateVID,start,count,Coordinates);
+    err = nc_get_vara_double(NCID,CoordinateVID,start,count,Coordinates);
     if( err != NC_NOERR ) {
         CSmallString error;
         error << "unable to get coordinates (" << nc_strerror(err) << ")";
@@ -464,14 +464,28 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
         p_snap->SetPosition(i,pos);
     }
 
+    // velocities -------------------------------
+    err = nc_get_vara_double(NCID,VelocityVID,start,count,Velocities);
+    if( err != NC_NOERR ) {
+        CSmallString error;
+        error << "unable to get velocities (" << nc_strerror(err) << ")";
+        ES_ERROR(error);
+        return(false);
+    }
+
+    j=0;
+    for(int i=0; i < ActualAtoms; i++) {
+        CPoint vel;
+        vel.x = Velocities[j++];
+        vel.y = Velocities[j++];
+        vel.z = Velocities[j++];
+        p_snap->SetVelocity(i,vel);
+    }
+
     // box ---------------------------------------
     if( HasBox ) {
-        start[0] = CurrentSnapshot;
-        start[1] = 0;
-        start[2] = 0;
-        count[0] = 1;
-        count[1] = 3;
-        count[2] = 0;
+        start[0] = 0;
+        count[0] = 3;
 
         err = nc_get_vara_double(NCID,CellLengthVID,start,count,CellLength);
         if( err != NC_NOERR ) {
@@ -501,9 +515,9 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
     }
 
     // time --------------------------------------
-    start[0] = CurrentSnapshot;
+    start[0] = 0;
     count[0] = 1;
-    err = nc_get_vara_float(NCID,TimeVID,start,count,&Time);
+    err = nc_get_vara_double(NCID,TimeVID,start,count,&Time);
     if( err != NC_NOERR ) {
         CSmallString error;
         error << "unable to get time (" << nc_strerror(err) << ")";
@@ -512,17 +526,15 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
     }
     p_snap->SetTime(Time);
 
-    CurrentSnapshot++;
-
     return(true);
 }
 
 //------------------------------------------------------------------------------
 
-bool CNetCDFTraj::WriteSnapshot(CAmberRestart* p_snap)
+bool CNetCDFRst::WriteSnapshot(CAmberRestart* p_snap)
 {
-    if( Mode != AMBER_TRAJ_WRITE ){
-        ES_ERROR("illegal mode, it should be AMBER_TRAJ_WRITE");
+    if( Mode != 'w' ){
+        ES_ERROR("illegal mode, it should be 'w'");
         return(false);
     }
 
@@ -573,18 +585,31 @@ bool CNetCDFTraj::WriteSnapshot(CAmberRestart* p_snap)
         Coordinates[j++] = pos.z;
     }
 
+    if( Velocities == NULL ) {
+        CSmallString error;
+        error << "Velocities are NULL";
+        ES_ERROR(error);
+        return(false);
+    }
+
+    j = 0;
+    for(int i=0; i < ActualAtoms; i++){
+        CPoint vel = p_snap->GetVelocity(i);
+        Velocities[j++] = vel.x;
+        Velocities[j++] = vel.y;
+        Velocities[j++] = vel.z;
+    }
+
     int err;
 
-    size_t start[3];
-    size_t count[3];
+    size_t start[2];
+    size_t count[2];
 
-    start[0] = CurrentSnapshot;
+    start[0] = 0;
+    count[0] = ActualAtoms;
     start[1] = 0;
-    start[2] = 0;
-    count[0] = 1;
-    count[1] = ActualAtoms;
-    count[2] = 3;
-    err = nc_put_vara_float(NCID, CoordinateVID, start, count,Coordinates);
+    count[1] = 3;
+    err = nc_put_vara_double(NCID, CoordinateVID, start, count,Coordinates);
     if( err != NC_NOERR ){
         CSmallString error;
         error << "unable to write coordinates (" << nc_strerror(err) << ")";
@@ -592,13 +617,19 @@ bool CNetCDFTraj::WriteSnapshot(CAmberRestart* p_snap)
         return(false);
     }
 
+    err = nc_put_vara_double(NCID, VelocityVID, start, count,Velocities);
+    if( err != NC_NOERR ){
+        CSmallString error;
+        error << "unable to write velocities (" << nc_strerror(err) << ")";
+        ES_ERROR(error);
+        return(false);
+    }
+
     if( HasBox ) {
-        start[0] = CurrentSnapshot;
+        start[0] = 0;
+        count[0] = 3;
         start[1] = 0;
-        start[2] = 0;
-        count[0] = 1;
-        count[1] = 3;
-        count[2] = 0;
+        count[1] = 0;
 
         CPoint box = p_snap->GetBox();
         CellLength[0] = box.x;
@@ -626,20 +657,6 @@ bool CNetCDFTraj::WriteSnapshot(CAmberRestart* p_snap)
             return(false);
         }
     }
-
-    start[0] = CurrentSnapshot;
-    count[0] = 1;
-    float time = CurrentSnapshot;
-    err = nc_put_vara_float(NCID, TimeVID, start, count, &time);
-    if( err != NC_NOERR ){
-        CSmallString error;
-        error << "unable to write time (" << nc_strerror(err) << ")";
-        ES_ERROR(error);
-        return(false);
-    }
-
-    CurrentSnapshot++;
-    TotalSnapshots++;
 
     nc_sync(NCID);
 

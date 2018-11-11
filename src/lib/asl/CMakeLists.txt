@@ -34,12 +34,16 @@ SET(ASL_SRC
         topology/AmberTopology.cpp
         topology/AmberSubTopology.cpp
 
+     # netcdf support
+        NetCDFFile.cpp
+
      # trajectory -----------
         trajectory/AmberTrajectory.cpp
         trajectory/NetCDFTraj.cpp
 
      # restart --------------
         restart/AmberRestart.cpp
+        restart/NetCDFRst.cpp
 
      # masks ----------------
         mask/AmberMaskAtoms.cpp

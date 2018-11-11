@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <XMLElement.hpp>
 #include <XMLBinData.hpp>
+#include <NetCDFRst.hpp>
 
 //---------------------------------------------------------------------------
 
@@ -44,6 +45,7 @@ CAmberRestart::CAmberRestart(void)
     Title=NULL;
     Time=0;
     NumberOfAtoms=0;
+    Format = AMBER_RST_UNKNOWN;
 }
 
 //---------------------------------------------------------------------------
@@ -133,58 +135,122 @@ void CAmberRestart::Release(void)
 //------------------------------------------------------------------------------
 //==============================================================================
 
-bool CAmberRestart::Load(const CSmallString& name,bool allow_stdin)
+bool CAmberRestart::Load(const CSmallString& name,bool allow_stdin,ERestartFormat format)
 {
-    FILE* fin;
+    Format = format;
 
-    if( (allow_stdin == true) && (name == "-") ) {
-        fin = stdin;
-    } else {
-        fin = fopen(name,"r");
-        if( fin == NULL ) {
-            CSmallString error;
-            error << "unable to open restart file '" << name << "' ("
-                  << strerror(errno) << ")";
-            ES_ERROR(error);
+    if( Format == AMBER_RST_UNKNOWN ){
+        // detect format
+        if( (allow_stdin == true) && (name == "-") ){
+            ES_ERROR("unable to detect rst format if stdin is used as imput");
             return(false);
+        }
+        if( CNetCDFRst::IsNetCDFFile(name) == true ){
+            Format = AMBER_RST_NETCDF;
+        } else {
+            Format = AMBER_RST_ASCII;
         }
     }
 
-    bool  result = Load(fin);
+    switch(Format){
+        case AMBER_RST_UNKNOWN:  // this should not happen
+        case AMBER_RST_ASCII: {
+            FILE* fin;
 
-    if( ! ((allow_stdin == true) && (name == "-")) ) {
-        fclose(fin);
+            if( (allow_stdin == true) && (name == "-") ) {
+                fin = stdin;
+            } else {
+                fin = fopen(name,"r");
+                if( fin == NULL ) {
+                    CSmallString error;
+                    error << "unable to open restart file '" << name << "' ("
+                          << strerror(errno) << ")";
+                    ES_ERROR(error);
+                    return(false);
+                }
+            }
+
+            bool  result = Load(fin);
+
+            if( ! ((allow_stdin == true) && (name == "-")) ) {
+                fclose(fin);
+            }
+            return(result);
+        }
+        case AMBER_RST_NETCDF: {
+            CNetCDFRst NetCDF;
+            if( NetCDF.Open(name,'r') == false ){
+                ES_TRACE_ERROR("unable to open NetCDF for reading");
+                return(false);
+            }
+            if( NetCDF.ReadHeader(Topology) == false ){
+                ES_TRACE_ERROR("unable to read header");
+                return(false);
+            }
+            return(NetCDF.ReadSnapshot(this));
+        }
     }
 
-    return(result);
+    ES_ERROR("unsupported format");
+    return(false);
 }
 
 //---------------------------------------------------------------------------
 
-bool CAmberRestart::Save(const CSmallString& name,bool allow_stdout)
+bool CAmberRestart::Save(const CSmallString& name,bool allow_stdout,ERestartFormat format)
 {
-    FILE* fout;
+    Format = format;
 
-    if( (allow_stdout == true) && (name == "-") ) {
-        fout = stdout;
-    } else {
-        fout = fopen(name,"w");
-        if( fout == NULL ) {
-            CSmallString error;
-            error << "unable to open restart file '" << name << "' ("
-                  << strerror(errno) << ")";
-            ES_ERROR(error);
+    switch(Format){
+        case AMBER_RST_UNKNOWN:
+            ES_ERROR("AMBER_RST_UNKNOWN cannot be used in Save()");
             return(false);
+        case AMBER_RST_ASCII: {
+            FILE* fout;
+
+            if( (allow_stdout == true) && (name == "-") ) {
+                fout = stdout;
+            } else {
+                fout = fopen(name,"w");
+                if( fout == NULL ) {
+                    CSmallString error;
+                    error << "unable to open restart file '" << name << "' ("
+                          << strerror(errno) << ")";
+                    ES_ERROR(error);
+                    return(false);
+                }
+            }
+
+            bool  result = Save(fout);
+
+            if( ! ((allow_stdout == true) && (name == "-")) ) {
+                fclose(fout);
+            }
+            return(result);
+        }
+        case AMBER_RST_NETCDF: {
+            CNetCDFRst NetCDF;
+            if( NetCDF.Open(name,'w') == false ){
+                ES_TRACE_ERROR("unable to open NetCDF for writing");
+                return(false);
+            }
+            if( NetCDF.ReadHeader(Topology) == false ){
+                ES_TRACE_ERROR("unable to write header");
+                return(false);
+            }
+            return(NetCDF.WriteSnapshot(this));
         }
     }
 
-    bool  result = Save(fout);
+    ES_ERROR("unsupported format");
+    return(false);
+}
 
-    if( ! ((allow_stdout == true) && (name == "-")) ) {
-        fclose(fout);
-    }
+//---------------------------------------------------------------------------
 
-    return(result);
+ERestartFormat CAmberRestart::GetFormat(void)
+{
+    return(Format);
 }
 
 //---------------------------------------------------------------------------
@@ -353,10 +419,12 @@ bool CAmberRestart::Save(FILE *fout)
         ES_ERROR("unable to save number of atoms to restart file");
         return(false);
     }
-    fortranio.ChangeFormat("1E15.7");
-    if( fortranio.WriteReal(Time) == false ) {
-        ES_ERROR("unable to save time position to restart file");
-        return(false);
+    if( VelocitiesLoaded ) {  // write velocities only when loaded
+        fortranio.ChangeFormat("1E15.7");
+        if( fortranio.WriteReal(Time) == false ) {
+            ES_ERROR("unable to save time position to restart file");
+            return(false);
+        }
     }
 
     fortranio.WriteEndOfSection();
