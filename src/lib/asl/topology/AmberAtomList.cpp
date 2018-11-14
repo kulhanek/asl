@@ -260,6 +260,15 @@ bool CAmberAtomList::LoadAtomNUMEXs(FILE* p_file,const char* p_format)
 
 //------------------------------------------------------------------------------
 
+bool CAmberAtomList::LoadAtomIPol(FILE* p_file,const char* p_format)
+{
+    CFortranIO fortranio(p_file);
+    fortranio.SetFormat(p_format);
+    return(fortranio.ReadInt(IFPOL));
+}
+
+//------------------------------------------------------------------------------
+
 bool CAmberAtomList::LoadAtomPol(FILE* p_file,const char* p_format)
 {
     CFortranIO fortranio(p_file);

@@ -164,6 +164,23 @@ bool CNetCDFFile::PutAttributeText(int vid, const char *attribute, const char *t
 
 //------------------------------------------------------------------------------
 
+bool CNetCDFFile::PutAttributeValue(int vid, const char *attribute, double value)
+{
+    int err;
+    err = nc_put_att_double(NCID, vid, attribute,NC_DOUBLE,1, &value);
+
+    if (err != NC_NOERR) {
+        CSmallString error;
+        error << "error to put attribute " << attribute << " (";
+        error << nc_strerror(err) << ")";
+        ES_ERROR(error);
+        return(false);
+    }
+    return(true);
+}
+
+//------------------------------------------------------------------------------
+
 int CNetCDFFile::GetVariableID(const char* p_variable)
 {
     int err;

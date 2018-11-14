@@ -384,6 +384,7 @@ void CAmberTopology::operator = (const CAmberTopology& src)
     fSCEE_SCALE_FACTOR = src.fSCEE_SCALE_FACTOR;
     fSCNB_SCALE_FACTOR = src.fSCNB_SCALE_FACTOR;
     fATOMIC_NUMBER = src.fATOMIC_NUMBER;
+    fPOL = src.fPOL;
 
     AtomList = src.AtomList;
     ResidueList = src.ResidueList;
@@ -1718,6 +1719,27 @@ bool CAmberTopology::LoadAmber7(FILE* p_top)
             continue;
         }
 
+        //-----------------------------------
+        if( strcmp(p_sname,"%FLAG IPOL") == 0 ) {
+            fIPOL = fortranio.GetFormatOfSection("%FLAG IPOL");
+            if( fIPOL == NULL ) {
+                ES_ERROR("unable to decode data format of %%FLAG IPOL section");
+                return(false);
+            }
+            if( AtomList.LoadAtomIPol(p_top,fIPOL) == false ) return(false);
+            continue;
+        }
+
+        //-----------------------------------
+        if( strcmp(p_sname,"%FLAG POL") == 0 ) {
+            fPOL = fortranio.GetFormatOfSection("%FLAG POL");
+            if( fPOL == NULL ) {
+                ES_ERROR("unable to decode data format of %%FLAG POL section");
+                return(false);
+            }
+            if( AtomList.LoadAtomPol(p_top,fPOL) == false ) return(false);
+            continue;
+        }
 
         if( AtomList.HasPertInfo() == true ) {
             //-----------------------------------
@@ -2264,7 +2286,7 @@ bool CAmberTopology::LoadBasicInfo(FILE* p_top,const char* p_format,EAmberVersio
     int IFBOX;     // set to 1 if standard periodic box, 2 when truncated octahedral
     int NMXRS;     // number of atoms in the largest residue
     int IFCAP;     // set to 1 if the CAP option from edit was specified
-    int IFPOL=0;     // set to 1 if the polarization option from edit was specified
+    int IFPOL=0;   // set to 1 if the polarization option from edit was specified
 
     if( fortranio.ReadInt(NATOM) == false ) {
         ES_ERROR("unable load NATOM item");
@@ -2416,9 +2438,18 @@ bool CAmberTopology::LoadBasicInfo(FILE* p_top,const char* p_format,EAmberVersio
         return(false);
     }
 
+    int NUMEXTRA = 0;
+    // http://ambermd.org/formats.html
     if( version != AMBER_VERSION_6 ) {
-        if( fortranio.ReadInt(IFPOL) == false ) {
-            ES_ERROR("unable load IFPOL item");
+        if( fortranio.ReadInt(NUMEXTRA) == false ) {
+            ES_ERROR("unable load NUMEXTRA item");
+            return(false);
+        }
+    }
+    for(int i=0; i < NUMEXTRA; i++){
+        int dummy;
+        if( fortranio.ReadInt(dummy) == false ) {
+            ES_ERROR("unable load dummy item after NUMEXTRA item");
             return(false);
         }
     }

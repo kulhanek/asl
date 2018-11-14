@@ -51,6 +51,7 @@ protected:
     int  GetVariableID(const char* p_variable);
     bool GetVariableAttribute(int varid,const char* p_attribute,CSmallString& text);
     bool PutAttributeText(int vid, const char *attribute, const char *text);
+    bool PutAttributeValue(int vid, const char *attribute, double value);
     bool DefineVariable(const char *name, nc_type xtype, int ndims, int dimids[], int *varidp);
 };
 

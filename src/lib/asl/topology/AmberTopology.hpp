@@ -204,6 +204,8 @@ private:
     CSmallString fSCEE_SCALE_FACTOR;
     CSmallString fSCNB_SCALE_FACTOR;
     CSmallString fATOMIC_NUMBER;
+    CSmallString fIPOL;
+    CSmallString fPOL;
 
     bool LoadAmber6(FILE* p_top);
     bool LoadAmber7(FILE* p_top);

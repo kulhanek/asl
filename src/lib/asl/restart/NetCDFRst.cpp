@@ -28,15 +28,26 @@
 #include <AmberTopology.hpp>
 #include <string.h>
 
+#define AMBER_NETCDF_CONVENTION "AMBERRESTART"
 #define AMBER_NETCDF_FRAME "frame"
 #define AMBER_NETCDF_SPATIAL "spatial"
 #define AMBER_NETCDF_ATOM "atom"
 #define AMBER_NETCDF_CELL_SPATIAL "cell_spatial"
 #define AMBER_NETCDF_CELL_ANGULAR "cell_angular"
 #define AMBER_NETCDF_COORDS "coordinates"
+#define AMBER_NETCDF_VELOCITIES "velocities"
+#define AMBER_NETCDF_CELL_LENGTHS "cell_lengths"
+#define AMBER_NETCDF_CELL_ANGLES "cell_angles"
+#define AMBER_NETCDF_UNITS "units"
 #define AMBER_NETCDF_TIME "time"
 #define AMBER_NETCDF_LABEL "label"
 #define AMBER_NETCDF_LABELLEN 5
+#define AMBER_NETCDF_PS "picosecond"
+#define AMBER_NETCDF_ANG "angstrom"
+#define AMBER_NETCDF_DEG "degrees"
+#define AMBER_NETCDF_ANGPPS "angstrom/picosecond"
+#define AMBER_NETCDF_VSCALE "scale_factor"
+double VScaleFac = 20.455;
 
 //==============================================================================
 //------------------------------------------------------------------------------
@@ -48,16 +59,15 @@ CNetCDFRst::CNetCDFRst(void)
 
     SpatialVID = -1;
     SpatialDID = -1;
+    AtomDID = -1;
 
     Spatial = 0;
-    ActualAtoms = 0;
+    NumOfNetCDFAtoms = 0;
 
     CoordinateVID = -1;
-    CoordinateDID = -1;
     Coordinates = NULL;
 
     VelocityVID = -1;
-    VelocityDID = -1;
     Velocities = NULL;
 
     CellSpatialVID = -1;
@@ -123,9 +133,9 @@ bool CNetCDFRst::ReadHeader(CAmberTopology* p_top)
     result &= GetVariableAttribute(NC_GLOBAL,"Conventions",Conventions);
     result &= GetVariableAttribute(NC_GLOBAL,"ConventionVersion",ConventionVersion);
 
-    if( Conventions != "AMBERRESTART" ) {
+    if( Conventions != AMBER_NETCDF_CONVENTION ) {
         CSmallString error;
-        error << "illegal conventions '" << Conventions << "', expecting 'AMBERRESTART'";
+        error << "illegal conventions '" << Conventions << "', expecting " << AMBER_NETCDF_CONVENTION;
         ES_ERROR(error);
         return(false);
     }
@@ -136,8 +146,8 @@ bool CNetCDFRst::ReadHeader(CAmberTopology* p_top)
         return(false);
     }
 
-    GetDimensionInfo("spatial", &Spatial);
-    GetDimensionInfo("atom", &ActualAtoms);
+    GetDimensionInfo(AMBER_NETCDF_SPATIAL, &Spatial);
+    GetDimensionInfo(AMBER_NETCDF_ATOM, &NumOfNetCDFAtoms);
 
     if( Spatial != 3 ) {
         CSmallString error;
@@ -146,16 +156,16 @@ bool CNetCDFRst::ReadHeader(CAmberTopology* p_top)
         return(false);
     }
 
-    if( ActualAtoms != NumOfTopologyAtoms ) {
+    if( NumOfNetCDFAtoms != NumOfTopologyAtoms ) {
         CSmallString error;
-        error << "number of atoms in the topology '" << ActualAtoms << "' is different than in topology '" << NumOfTopologyAtoms << "'";
+        error << "number of atoms in the topology '" << NumOfNetCDFAtoms << "' is different than in topology '" << NumOfTopologyAtoms << "'";
         ES_ERROR(error);
         return(false);
     }
 
     // sanity check - spatial variable ---------------------
 
-    SpatialVID = GetVariableID("spatial");
+    SpatialVID = GetVariableID(AMBER_NETCDF_SPATIAL);
     if( SpatialVID < 0 ) {
         return(false);
     }
@@ -184,32 +194,38 @@ bool CNetCDFRst::ReadHeader(CAmberTopology* p_top)
     }
 
     // sanity check - time ---------------------------------
-    TimeVID = GetVariableID("time");
+    TimeVID = GetVariableID(AMBER_NETCDF_TIME);
     if( TimeVID < 0 ) {
+        CSmallString error;
+        error << "unable to get TimeVID";
+        ES_ERROR(error);
         return(false);
     }
     CSmallString unit;
-    if( GetVariableAttribute(TimeVID,"units",unit) == false ) {
+    if( GetVariableAttribute(TimeVID,AMBER_NETCDF_UNITS,unit) == false ) {
         return(false);
     }
-    if( unit != "picosecond" ) {
+    if( unit != AMBER_NETCDF_PS ) {
         CSmallString error;
-        error << "incorrect unit for time (" << unit << "), requested picosecond";
+        error << "incorrect unit for time (" << unit << "), requested " << AMBER_NETCDF_PS;
         ES_ERROR(error);
         return(false);
     }
 
     // sanity check - coordinates --------------------------
-    CoordinateVID = GetVariableID("coordinates");
+    CoordinateVID = GetVariableID(AMBER_NETCDF_COORDS);
     if( CoordinateVID < 0 ) {
-        return(false);
-    }
-    if( GetVariableAttribute(CoordinateVID,"units",unit) == false ) {
-        return(false);
-    }
-    if( unit != "angstrom" ) {
         CSmallString error;
-        error << "incorrect unit for coordinates (" << unit << "), requested angstrom";
+        error << "unable to get CoordinateVID";
+        ES_ERROR(error);
+        return(false);
+    }
+    if( GetVariableAttribute(CoordinateVID,AMBER_NETCDF_UNITS,unit) == false ) {
+        return(false);
+    }
+    if( unit != AMBER_NETCDF_ANG ) {
+        CSmallString error;
+        error << "incorrect unit for coordinates (" << unit << "), requested " << AMBER_NETCDF_ANG;
         ES_ERROR(error);
         return(false);
     }
@@ -217,18 +233,43 @@ bool CNetCDFRst::ReadHeader(CAmberTopology* p_top)
     if( Coordinates != NULL ) {
         delete Coordinates;
     }
-    Coordinates = new double[ActualAtoms*3];
+    Coordinates = new double[NumOfNetCDFAtoms*3];
 
-    if( Velocities != NULL ) {
-        delete Velocities;
+    VelocityVID = GetVariableID(AMBER_NETCDF_VELOCITIES);
+    if( VelocityVID >= 0 ) {
+        if( GetVariableAttribute(VelocityVID,AMBER_NETCDF_UNITS,unit) == false ) {
+            return(false);
+        }
+        if( unit != AMBER_NETCDF_ANGPPS ) {
+            CSmallString error;
+            error << "incorrect unit for coordinates (" << unit << "), requested " << AMBER_NETCDF_ANGPPS;
+            ES_ERROR(error);
+            return(false);
+        }
+
+        if( Velocities != NULL ) {
+            delete Velocities;
+        }
+        Velocities = new double[NumOfNetCDFAtoms*3];
     }
-    Velocities = new double[ActualAtoms*3];
 
     // sanity check - box ----------------------------------
     if( HasBox ){
         // optional
-        CellLengthVID = GetVariableID("cell_lengths");
-        CellAngleVID = GetVariableID("cell_angles");
+        CellLengthVID = GetVariableID(AMBER_NETCDF_CELL_LENGTHS);
+        if( CellLengthVID < 0 ){
+            CSmallString error;
+            error << "unable to get CellLengthVID";
+            ES_ERROR(error);
+            return(false);
+        }
+        CellAngleVID = GetVariableID(AMBER_NETCDF_CELL_ANGLES);
+        if( CellAngleVID < 0 ){
+            CSmallString error;
+            error << "unable to get CellAngleVID";
+            ES_ERROR(error);
+            return(false);
+        }
     }
 
     return(true);
@@ -236,7 +277,7 @@ bool CNetCDFRst::ReadHeader(CAmberTopology* p_top)
 
 //------------------------------------------------------------------------------
 
-bool CNetCDFRst::WriteHeader(CAmberTopology* p_top)
+bool CNetCDFRst::WriteHeader(CAmberTopology* p_top,bool velocities)
 {
     if( p_top == NULL ){
         INVALID_ARGUMENT("p_top == NULL");
@@ -250,30 +291,24 @@ bool CNetCDFRst::WriteHeader(CAmberTopology* p_top)
     int dimensionID[NC_MAX_VAR_DIMS];
 
     NumOfTopologyAtoms = p_top->AtomList.GetNumberOfAtoms();
-    ActualAtoms = NumOfTopologyAtoms;
+    NumOfNetCDFAtoms = NumOfTopologyAtoms;
 
     if( Coordinates != NULL ) {
         delete Coordinates;
     }
-    Coordinates = new double[ActualAtoms*3];
-
-    if( Velocities != NULL ) {
-        delete Velocities;
-    }
-    Velocities = new double[ActualAtoms*3];
+    Coordinates = new double[NumOfNetCDFAtoms*3];
 
     // global dimmensions
-    DefineDimension(AMBER_NETCDF_FRAME, NC_UNLIMITED, &TimeDID);
     DefineDimension(AMBER_NETCDF_SPATIAL, 3, &SpatialDID);
-    DefineDimension(AMBER_NETCDF_ATOM, ActualAtoms, &CoordinateDID);
-    DefineDimension(AMBER_NETCDF_ATOM, ActualAtoms, &VelocityDID);
-    DefineDimension(AMBER_NETCDF_LABEL, AMBER_NETCDF_LABELLEN, &LabelDID);
-    DefineDimension(AMBER_NETCDF_CELL_SPATIAL, 3, &CellSpatialDID);
-    DefineDimension(AMBER_NETCDF_CELL_ANGULAR, 3, &CellAngularDID);
+    DefineDimension(AMBER_NETCDF_ATOM, NumOfNetCDFAtoms, &AtomDID);
 
     // put global attributes
     Conventions =  "AMBERRESTART";
     ConventionVersion = "1.0";
+    Title = "default_name";
+    Application = "AMBER";
+    Program = "cats";
+    Version = "X.x";
 
     PutAttributeText(NC_GLOBAL, "title", Title);
     PutAttributeText(NC_GLOBAL, "application", Application);
@@ -286,39 +321,53 @@ bool CNetCDFRst::WriteHeader(CAmberTopology* p_top)
     dimensionID[0] = SpatialDID;
     DefineVariable(AMBER_NETCDF_SPATIAL, NC_CHAR, 1, dimensionID, &SpatialVID);
 
-    dimensionID[0] = TimeDID;
-    DefineVariable(AMBER_NETCDF_TIME, NC_FLOAT, 1, dimensionID, &TimeVID);
-    PutAttributeText(TimeVID, "units", "picosecond");
+    DefineVariable(AMBER_NETCDF_TIME, NC_DOUBLE, 0, dimensionID, &TimeVID);
+    PutAttributeText(TimeVID, AMBER_NETCDF_UNITS, AMBER_NETCDF_PS);
 
-    dimensionID[0] = CoordinateDID;
+    dimensionID[0] = AtomDID;
     dimensionID[1] = SpatialDID;
-    DefineVariable(AMBER_NETCDF_COORDS, NC_FLOAT, 2, dimensionID, &CoordinateVID);
-    PutAttributeText(CoordinateVID, "units", "angstrom");
+    DefineVariable(AMBER_NETCDF_COORDS, NC_DOUBLE, 2, dimensionID, &CoordinateVID);
+    PutAttributeText(CoordinateVID, AMBER_NETCDF_UNITS, AMBER_NETCDF_ANG);
 
-    dimensionID[0] = VelocityDID;
-    dimensionID[1] = SpatialDID;
-    DefineVariable(AMBER_NETCDF_COORDS, NC_FLOAT, 2, dimensionID, &VelocityVID);
-    PutAttributeText(VelocityVID, "units", "angstrom/picosecond");
-// velocities:scale_factor = 20.455 ; FIXME
+    HasVelocities = velocities;
 
-    dimensionID[0] = CellSpatialDID;
-    DefineVariable(AMBER_NETCDF_CELL_SPATIAL, NC_CHAR, 1, dimensionID, &CellSpatialVID);
+    if( Velocities != NULL ) {
+        delete Velocities;
+    }
+    Velocities = NULL;
 
-    dimensionID[0] = CellAngularDID;
-    dimensionID[1] = LabelDID;
-    DefineVariable(AMBER_NETCDF_CELL_ANGULAR, NC_CHAR, 2, dimensionID, &CellAngularVID);
+    if( HasVelocities ) {
+        Velocities = new double[NumOfNetCDFAtoms*3];
+
+        dimensionID[0] = AtomDID;
+        dimensionID[1] = SpatialDID;
+        DefineVariable(AMBER_NETCDF_VELOCITIES, NC_DOUBLE, 2, dimensionID, &VelocityVID);
+        PutAttributeText(VelocityVID, AMBER_NETCDF_UNITS,AMBER_NETCDF_ANGPPS);
+        PutAttributeValue(VelocityVID, AMBER_NETCDF_VSCALE, VScaleFac);
+    }
 
     // set up box coords
     HasBox = p_top->BoxInfo.GetType() != AMBER_BOX_NONE;
 
     if( HasBox ) {
+        DefineDimension(AMBER_NETCDF_CELL_SPATIAL, 3, &CellSpatialDID);
+        DefineDimension(AMBER_NETCDF_CELL_ANGULAR, 3, &CellAngularDID);
+        DefineDimension(AMBER_NETCDF_LABEL, 5, &LabelDID);
+
         dimensionID[0] = CellSpatialDID;
-        DefineVariable("cell_lengths", NC_DOUBLE, 1, dimensionID, &CellLengthVID);
-        PutAttributeText(CellLengthVID, "units", "angstrom");
+        DefineVariable(AMBER_NETCDF_CELL_SPATIAL, NC_CHAR, 1, dimensionID, &CellSpatialVID);
 
         dimensionID[0] = CellAngularDID;
-        DefineVariable("cell_angles", NC_DOUBLE, 1, dimensionID, &CellAngleVID);
-        PutAttributeText(CellAngleVID, "units", "degree");
+        dimensionID[1] = LabelDID;
+        DefineVariable(AMBER_NETCDF_CELL_ANGULAR, NC_CHAR, 2, dimensionID, &CellAngularVID);
+
+        dimensionID[0] = CellSpatialDID;
+        DefineVariable(AMBER_NETCDF_CELL_LENGTHS, NC_DOUBLE, 1, dimensionID, &CellLengthVID);
+        PutAttributeText(CellLengthVID, AMBER_NETCDF_UNITS,AMBER_NETCDF_ANG);
+
+        dimensionID[0] = CellAngularDID;
+        DefineVariable(AMBER_NETCDF_CELL_ANGLES, NC_DOUBLE, 1, dimensionID, &CellAngleVID);
+        PutAttributeText(CellAngleVID, AMBER_NETCDF_UNITS,AMBER_NETCDF_DEG);
     }
 
     int err,oldMode;
@@ -344,9 +393,6 @@ bool CNetCDFRst::WriteHeader(CAmberTopology* p_top)
     size_t start[3];
     size_t count[3];
     char xyz[3];
-    char abc[15] = { 'a', 'l', 'p', 'h', 'a',
-                     'b', 'e', 't', 'a', ' ',
-                     'g', 'a', 'm', 'm', 'a' };
 
     // setup labels
     start[0] = 0;
@@ -362,29 +408,36 @@ bool CNetCDFRst::WriteHeader(CAmberTopology* p_top)
         return(false);
     }
 
-    start[0] = 0;
-    count[0] = 3;
-    xyz[0] = 'a';
-    xyz[1] = 'b';
-    xyz[2] = 'c';
-    err = nc_put_vara_text(NCID, CellSpatialVID, start, count, xyz);
-    if (err != NC_NOERR) {
-        CSmallString error;
-        error << "unable to set spatial cell VID 'a', 'b' and 'c' (" << nc_strerror(err) << ")";
-        ES_ERROR(error);
-        return(false);
-    }
+    if( HasBox ) {
 
-    start[0] = 0;
-    start[1] = 0;
-    count[0] = 3;
-    count[1] = 5;
-    err = nc_put_vara_text(NCID, CellAngularVID, start, count, abc);
-    if (err != NC_NOERR) {
-        CSmallString error;
-        error << "unable to set angular cell VID 'alpha', 'beta ' and 'gamma' (" << nc_strerror(err) << ")";
-        ES_ERROR(error);
-        return(false);
+        start[0] = 0;
+        count[0] = 3;
+        xyz[0] = 'a';
+        xyz[1] = 'b';
+        xyz[2] = 'c';
+        err = nc_put_vara_text(NCID, CellSpatialVID, start, count, xyz);
+        if (err != NC_NOERR) {
+            CSmallString error;
+            error << "unable to set spatial cell VID 'a', 'b' and 'c' (" << nc_strerror(err) << ")";
+            ES_ERROR(error);
+            return(false);
+        }
+
+        char abc[15] = { 'a', 'l', 'p', 'h', 'a',
+                         'b', 'e', 't', 'a', ' ',
+                         'g', 'a', 'm', 'm', 'a' };
+
+        start[0] = 0;
+        start[1] = 0;
+        count[0] = 3;
+        count[1] = 5;
+        err = nc_put_vara_text(NCID, CellAngularVID, start, count, abc);
+        if (err != NC_NOERR) {
+            CSmallString error;
+            error << "unable to set angular cell VID 'alpha', 'beta ' and 'gamma' (" << nc_strerror(err) << ")";
+            ES_ERROR(error);
+            return(false);
+        }
     }
 
     return(true);
@@ -408,9 +461,9 @@ bool CNetCDFRst::ReadSnapshot(CAmberRestart* p_snap)
         return(false);
     }
 
-    if( p_snap->GetNumberOfAtoms() != ActualAtoms ) {
+    if( p_snap->GetNumberOfAtoms() != NumOfNetCDFAtoms ) {
         CSmallString error;
-        error << "inconsistent number of atoms, trajectory: " << ActualAtoms;
+        error << "inconsistent number of atoms, trajectory: " << NumOfNetCDFAtoms;
         error << " topology: " << p_snap->GetNumberOfAtoms();
         ES_ERROR(error);
         return(false);
@@ -441,9 +494,23 @@ bool CNetCDFRst::ReadSnapshot(CAmberRestart* p_snap)
     int     err;
     size_t  start[2],count[2];
 
+    start[0] = 0;
+    count[0] = 1;
+    start[1] = 0;
+    count[1] = 0;
+
+    err = nc_get_vara_double(NCID,TimeVID,start,count,&Time);
+    if( err != NC_NOERR ) {
+        CSmallString error;
+        error << "unable to get time (" << nc_strerror(err) << ")";
+        ES_ERROR(error);
+        return(false);
+    }
+    p_snap->Time = Time;
+
     // coordinates -------------------------------
     start[0] = 0;
-    count[0] = ActualAtoms;
+    count[0] = NumOfNetCDFAtoms;
     start[1] = 0;
     count[1] = 3;
 
@@ -456,30 +523,29 @@ bool CNetCDFRst::ReadSnapshot(CAmberRestart* p_snap)
     }
 
     int j=0;
-    for(int i=0; i < ActualAtoms; i++) {
+    for(int i=0; i < NumOfNetCDFAtoms; i++) {
         CPoint pos;
         pos.x = Coordinates[j++];
         pos.y = Coordinates[j++];
         pos.z = Coordinates[j++];
         p_snap->SetPosition(i,pos);
+        p_snap->NumberOfAtoms = NumOfNetCDFAtoms;
     }
 
     // velocities -------------------------------
     err = nc_get_vara_double(NCID,VelocityVID,start,count,Velocities);
-    if( err != NC_NOERR ) {
-        CSmallString error;
-        error << "unable to get velocities (" << nc_strerror(err) << ")";
-        ES_ERROR(error);
-        return(false);
-    }
-
-    j=0;
-    for(int i=0; i < ActualAtoms; i++) {
-        CPoint vel;
-        vel.x = Velocities[j++];
-        vel.y = Velocities[j++];
-        vel.z = Velocities[j++];
-        p_snap->SetVelocity(i,vel);
+    p_snap->VelocitiesLoaded = false;
+    if( err == NC_NOERR ) {
+        // optional velocities
+        j=0;
+        for(int i=0; i < NumOfNetCDFAtoms; i++) {
+            CPoint vel;
+            vel.x = Velocities[j++];
+            vel.y = Velocities[j++];
+            vel.z = Velocities[j++];
+            p_snap->SetVelocity(i,vel);
+        }
+        p_snap->VelocitiesLoaded = true;
     }
 
     // box ---------------------------------------
@@ -547,9 +613,9 @@ bool CNetCDFRst::WriteSnapshot(CAmberRestart* p_snap)
         return(false);
     }
 
-    if( p_snap->GetNumberOfAtoms() != ActualAtoms ) {
+    if( p_snap->GetNumberOfAtoms() != NumOfNetCDFAtoms ) {
         CSmallString error;
-        error << "inconsistent number of atoms, trajectory: " << ActualAtoms;
+        error << "inconsistent number of atoms, trajectory: " << NumOfNetCDFAtoms;
         error << " topology: " << p_snap->GetNumberOfAtoms();
         ES_ERROR(error);
         return(false);
@@ -578,26 +644,11 @@ bool CNetCDFRst::WriteSnapshot(CAmberRestart* p_snap)
     }
 
     int j = 0;
-    for(int i=0; i < ActualAtoms; i++){
+    for(int i=0; i < NumOfNetCDFAtoms; i++){
         CPoint pos = p_snap->GetPosition(i);
         Coordinates[j++] = pos.x;
         Coordinates[j++] = pos.y;
         Coordinates[j++] = pos.z;
-    }
-
-    if( Velocities == NULL ) {
-        CSmallString error;
-        error << "Velocities are NULL";
-        ES_ERROR(error);
-        return(false);
-    }
-
-    j = 0;
-    for(int i=0; i < ActualAtoms; i++){
-        CPoint vel = p_snap->GetVelocity(i);
-        Velocities[j++] = vel.x;
-        Velocities[j++] = vel.y;
-        Velocities[j++] = vel.z;
     }
 
     int err;
@@ -606,7 +657,21 @@ bool CNetCDFRst::WriteSnapshot(CAmberRestart* p_snap)
     size_t count[2];
 
     start[0] = 0;
-    count[0] = ActualAtoms;
+    count[0] = 1;
+    start[1] = 0;
+    count[1] = 0;
+
+    Time = p_snap->Time;
+    err = nc_put_vara_double(NCID,TimeVID,start,count,&Time);
+    if( err != NC_NOERR ) {
+        CSmallString error;
+        error << "unable to set time (" << nc_strerror(err) << ")";
+        ES_ERROR(error);
+        return(false);
+    }
+
+    start[0] = 0;
+    count[0] = NumOfNetCDFAtoms;
     start[1] = 0;
     count[1] = 3;
     err = nc_put_vara_double(NCID, CoordinateVID, start, count,Coordinates);
@@ -617,12 +682,29 @@ bool CNetCDFRst::WriteSnapshot(CAmberRestart* p_snap)
         return(false);
     }
 
-    err = nc_put_vara_double(NCID, VelocityVID, start, count,Velocities);
-    if( err != NC_NOERR ){
-        CSmallString error;
-        error << "unable to write velocities (" << nc_strerror(err) << ")";
-        ES_ERROR(error);
-        return(false);
+    if( p_snap->VelocitiesLoaded ){
+        if( Velocities == NULL ) {
+            CSmallString error;
+            error << "Velocities are NULL";
+            ES_ERROR(error);
+            return(false);
+        }
+
+        j = 0;
+        for(int i=0; i < NumOfNetCDFAtoms; i++){
+            CPoint vel = p_snap->GetVelocity(i);
+            Velocities[j++] = vel.x;
+            Velocities[j++] = vel.y;
+            Velocities[j++] = vel.z;
+        }
+
+        err = nc_put_vara_double(NCID, VelocityVID, start, count,Velocities);
+        if( err != NC_NOERR ){
+            CSmallString error;
+            error << "unable to write velocities (" << nc_strerror(err) << ")";
+            ES_ERROR(error);
+            return(false);
+        }
     }
 
     if( HasBox ) {

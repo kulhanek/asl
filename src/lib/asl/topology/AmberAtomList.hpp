@@ -86,6 +86,7 @@ private:
     bool LoadAtomMasses(FILE* p_file,const char* p_format);
     bool LoadAtomIACs(FILE* p_file,const char* p_format);
     bool LoadAtomNUMEXs(FILE* p_file,const char* p_format);
+    bool LoadAtomIPol(FILE* p_file,const char* p_format);
     bool LoadAtomPol(FILE* p_file,const char* p_format);
 
     bool SaveAtomNames(FILE* p_file,const char* p_format);

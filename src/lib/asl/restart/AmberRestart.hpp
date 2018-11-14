@@ -126,7 +126,7 @@ public:
     bool IsBoxPresent(void) const;
 
     /// get snapshot time
-    double GetTime(void);
+    double GetTime(void) const;
 
     /// get snapshot time
     void SetTime(const double time);
@@ -162,6 +162,7 @@ private:
     static CPoint zero;
 
     friend class CAmberTrajectory;
+    friend class CNetCDFRst;
 };
 //---------------------------------------------------------------------------
 

@@ -42,7 +42,7 @@ public:
     bool ReadHeader(CAmberTopology* p_top);
 
     /// write header
-    bool WriteHeader(CAmberTopology* p_top);
+    bool WriteHeader(CAmberTopology* p_top,bool velocities);
 
     /// read trajectory snapshot
     bool ReadSnapshot(CAmberRestart* p_snap);
@@ -62,20 +62,21 @@ private:
     CSmallString            Conventions;
     CSmallString            ConventionVersion;
 
-    int                     ActualAtoms;
+    int                     NumOfNetCDFAtoms;
     int                     NumOfTopologyAtoms;
     bool                    HasBox;
+    bool                    HasVelocities;
+
+    int                     AtomDID;
 
     int                     SpatialVID;
     int                     SpatialDID;
     int                     Spatial;
 
     int                     CoordinateVID;
-    int                     CoordinateDID;
     double*                 Coordinates;
 
     int                     VelocityVID;
-    int                     VelocityDID;
     double*                 Velocities;
 
     int                     CellSpatialVID;
@@ -93,15 +94,6 @@ private:
     int                     TimeVID;
     int                     TimeDID;
     double                  Time;
-
-
-    int                     RemdRepIDXVID;
-    int                     RemdRepIDXDID;
-    double                  RemdRepIDX;
-
-    int                     RemdCrdIDXVID;
-    int                     RemdCrdIDXDID;
-    double                  RemdCrdIDX;
 
     friend class CAmberTrajectory;
 };

@@ -142,7 +142,7 @@ bool CAmberRestart::Load(const CSmallString& name,bool allow_stdin,ERestartForma
     if( Format == AMBER_RST_UNKNOWN ){
         // detect format
         if( (allow_stdin == true) && (name == "-") ){
-            ES_ERROR("unable to detect rst format if stdin is used as imput");
+            ES_ERROR("unable to detect rst format if stdin is used as input");
             return(false);
         }
         if( CNetCDFRst::IsNetCDFFile(name) == true ){
@@ -187,6 +187,8 @@ bool CAmberRestart::Load(const CSmallString& name,bool allow_stdin,ERestartForma
                 ES_TRACE_ERROR("unable to read header");
                 return(false);
             }
+            // allocate data
+            Create();
             return(NetCDF.ReadSnapshot(this));
         }
     }
@@ -234,7 +236,7 @@ bool CAmberRestart::Save(const CSmallString& name,bool allow_stdout,ERestartForm
                 ES_TRACE_ERROR("unable to open NetCDF for writing");
                 return(false);
             }
-            if( NetCDF.ReadHeader(Topology) == false ){
+            if( NetCDF.WriteHeader(Topology,VelocitiesLoaded) == false ){
                 ES_TRACE_ERROR("unable to write header");
                 return(false);
             }
@@ -732,7 +734,7 @@ bool CAmberRestart::IsBoxPresent(void) const
 
 //------------------------------------------------------------------------------
 
-double CAmberRestart::GetTime(void)
+double CAmberRestart::GetTime(void) const
 {
     return(Time);
 }
@@ -778,6 +780,8 @@ void CAmberRestart::operator = (const CAmberRestart& src)
         SetBox(src.GetBox());
         SetAngles(src.GetAngles());
     }
+
+    SetTime(src.GetTime());
 }
 
 //------------------------------------------------------------------------------
