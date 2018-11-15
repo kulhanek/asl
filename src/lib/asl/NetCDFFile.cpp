@@ -88,9 +88,9 @@ bool CNetCDFFile::IsNetCDFFile(const CSmallString& name)
     int ncid;
     int err = nc_open(name,NC_NOWRITE,&ncid);
     if( err != NC_NOERR ) {
-        CSmallString error;
-        error << "file '" << name << "' is not NetCDF file (" << nc_strerror(err) << ")";
-        ES_TRACE_ERROR(error);
+//        CSmallString error;
+//        error << "file '" << name << "' is not NetCDF file (" << nc_strerror(err) << ")";
+//        ES_TRACE_ERROR(error);
         return(false);
     }
     nc_close(ncid);

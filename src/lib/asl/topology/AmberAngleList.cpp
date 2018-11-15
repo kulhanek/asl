@@ -217,6 +217,52 @@ void CAmberAngleList::operator = (const CAmberAngleList& src)
     }
 }
 
+//------------------------------------------------------------------------------
+
+void CAmberAngleList::RemoveIllegalAngles(void)
+{
+    CAmberAngle*    OldAngleWithHydrogens = AngleWithHydrogens;
+    int             OldNTHETH = NTHETH;
+    CAmberAngle*    OldAngleWithoutHydrogens = AngleWithoutHydrogens;
+    int             OldMTHETA = MTHETA;
+
+    // recalculate number of angles
+    NTHETH = 0;
+    for(int i=0; i < OldNTHETH; i++) {
+        if( OldAngleWithHydrogens[i].GetICT() >= 0 ) NTHETH++;
+    }
+    MTHETA = 0;
+    for(int i=0; i < OldMTHETA; i++) {
+        if( OldAngleWithoutHydrogens[i].GetICT() >= 0 ) MTHETA++;
+    }
+
+    AngleWithHydrogens = NULL;
+    if( NTHETH > 0 ) AngleWithHydrogens = new CAmberAngle[NTHETH];
+    AngleWithoutHydrogens = NULL;
+    if( MTHETA > 0 ) AngleWithoutHydrogens = new CAmberAngle[MTHETA];
+
+    int j = 0;
+    for(int i=0; i < OldNTHETH; i++) {
+        if( OldAngleWithHydrogens[i].GetICT() >= 0 ){
+            AngleWithHydrogens[j] = OldAngleWithHydrogens[i];
+            j++;
+        }
+    }
+
+    j = 0;
+    for(int i=0; i < OldMTHETA; i++) {
+        if( OldAngleWithoutHydrogens[i].GetICT() >= 0 ){
+            AngleWithoutHydrogens[j] = OldAngleWithoutHydrogens[i];
+            j++;
+        }
+    }
+
+    // clean old data
+    if( OldAngleWithHydrogens )     delete[] OldAngleWithHydrogens;
+    if( OldAngleWithoutHydrogens )  delete[] OldAngleWithoutHydrogens;
+
+}
+
 //==============================================================================
 //------------------------------------------------------------------------------
 //==============================================================================

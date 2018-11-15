@@ -105,6 +105,9 @@ public:
     /// overload assigment operator
     void operator = (const CAmberAngleList& src);
 
+    /// remove illegal angles (ICT < 0)
+    void RemoveIllegalAngles(void);
+
 // private methods ----------------------------------------------------------
 private:
     int NTHETH;   //NTHETH : number of angles containing hydrogen

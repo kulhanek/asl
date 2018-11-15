@@ -25,6 +25,7 @@
 #include <FortranIO.hpp>
 #include <ErrorSystem.hpp>
 #include <list>
+#include <SmallTimeAndDate.hpp>
 
 //------------------------------------------------------------------------------
 
@@ -1900,8 +1901,13 @@ bool CAmberTopology::LoadAmber7(FILE* p_top)
 
 bool CAmberTopology::SaveAmber7(FILE* p_top)
 {
+    CSmallTimeAndDate ct;
+    ct.GetActualTimeAndDate();
+
     int outputlen;
-    if( (outputlen = fprintf(p_top,"%%VERSION  VERSION_STAMP = V0001.000  DATE = 00/00/00  00:00:00")) <= 0 ) {
+    if( (outputlen = fprintf(p_top,
+                             "%%VERSION  VERSION_STAMP = V0001.000  DATE = %02d/%02d/%02d  %02d:%02d:%02d",
+                             ct.GetMonth(),ct.GetDay(),ct.GetYear()%100,ct.GetHour(),ct.GetMinute(),ct.GetSecond())) <= 0 ) {
         ES_ERROR("unable write version stamp");
         return(false);
     }
