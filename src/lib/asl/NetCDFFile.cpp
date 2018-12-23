@@ -181,17 +181,19 @@ bool CNetCDFFile::PutAttributeValue(int vid, const char *attribute, double value
 
 //------------------------------------------------------------------------------
 
-int CNetCDFFile::GetVariableID(const char* p_variable)
+int CNetCDFFile::GetVariableID(const char* p_variable,bool error)
 {
     int err;
     int varID = 0;
 
     err = nc_inq_varid(NCID,p_variable,&varID);
     if (err != NC_NOERR) {
-        CSmallString error;
-        error << "error on ID of variable " << p_variable << " (";
-        error << nc_strerror(err) << ")";
-        ES_ERROR(error);
+        if( error ){
+            CSmallString serror;
+            serror << "error on ID of variable " << p_variable << " (";
+            serror << nc_strerror(err) << ")";
+            ES_ERROR(serror);
+        }
         return(-1);
     }
 

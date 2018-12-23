@@ -235,7 +235,7 @@ bool CNetCDFRst::ReadHeader(CAmberTopology* p_top)
     }
     Coordinates = new double[NumOfNetCDFAtoms*3];
 
-    VelocityVID = GetVariableID(AMBER_NETCDF_VELOCITIES);
+    VelocityVID = GetVariableID(AMBER_NETCDF_VELOCITIES,false);
     if( VelocityVID >= 0 ) {
         if( GetVariableAttribute(VelocityVID,AMBER_NETCDF_UNITS,unit) == false ) {
             return(false);

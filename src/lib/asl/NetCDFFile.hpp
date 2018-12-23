@@ -48,7 +48,7 @@ protected:
 
     int  GetDimensionInfo(const char* p_attribute, int* p_length);
     bool DefineDimension(const char *name, int length, int *dimidp);
-    int  GetVariableID(const char* p_variable);
+    int  GetVariableID(const char* p_variable,bool error=true);
     bool GetVariableAttribute(int varid,const char* p_attribute,CSmallString& text);
     bool PutAttributeText(int vid, const char *attribute, const char *text);
     bool PutAttributeValue(int vid, const char *attribute, double value);
