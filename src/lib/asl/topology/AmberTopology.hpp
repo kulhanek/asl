@@ -115,6 +115,9 @@ public:
     /// get total mass
     double GetTotalMass(void);
 
+    /// is NB couple excluded?
+    bool IsNBPairExcluded(int ai,int aj);
+
 // section o public data ------------------------------------------------------
 public:
     CAmberAtomList      AtomList;

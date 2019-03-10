@@ -308,6 +308,40 @@ double CAmberTopology::GetTotalMass(void)
 
 //------------------------------------------------------------------------------
 
+bool CAmberTopology::IsNBPairExcluded(int ai,int aj)
+{
+    if( ai == aj ) return(true);
+    if( (ai < 0) || (ai >= AtomList.GetNumberOfAtoms()) ) return(true);
+    if( (aj < 0) || (aj >= AtomList.GetNumberOfAtoms()) ) return(true);
+
+    if(ai > aj){
+        int t = aj;
+        aj = ai;
+        ai = t;
+    }
+
+    // calculate index
+    int li = 1;
+    for(int i=0; i < ai; i++){
+        CAmberAtom* p_atom = AtomList.GetAtom(i);
+        li +=  p_atom->GetNUMEX();
+    }
+    CAmberAtom* p_atom = AtomList.GetAtom(ai);
+    int lu = li + p_atom->GetNUMEX();
+
+    // correction for fortran indexes
+    li--;
+    lu--;
+    for(int i=li; i < lu; i++){
+        if( aj == NonBondedList.GetNATEX(i) ){
+            return(true);
+        }
+    }
+    return(false);
+}
+
+//------------------------------------------------------------------------------
+
 void CAmberTopology::operator = (const CAmberTopology& src)
 {
     Clean();
