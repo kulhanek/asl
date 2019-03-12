@@ -222,6 +222,51 @@ void CAmberDihedralList::operator = (const CAmberDihedralList& src)
     }
 }
 
+//------------------------------------------------------------------------------
+
+void CAmberDihedralList::RemoveIllegalDihedrals(void)
+{
+    CAmberDihedral* OldDihedralWithHydrogens = DihedralWithHydrogens;
+    int             OldNPHIH = NPHIH;
+    CAmberDihedral* OldDihedralWithoutHydrogens = DihedralWithoutHydrogens;
+    int             OldMPHIA = MPHIA;
+
+    // recalculate number of angles
+    NPHIH = 0;
+    for(int i=0; i < OldNPHIH; i++) {
+        if( OldDihedralWithHydrogens[i].GetICP() >= 0 ) NPHIH++;
+    }
+    MPHIA = 0;
+    for(int i=0; i < OldMPHIA; i++) {
+        if( OldDihedralWithoutHydrogens[i].GetICP() >= 0 ) MPHIA++;
+    }
+
+    DihedralWithHydrogens = NULL;
+    if( NPHIH > 0 ) DihedralWithHydrogens = new CAmberDihedral[NPHIH];
+    DihedralWithoutHydrogens = NULL;
+    if( MPHIA > 0 ) DihedralWithoutHydrogens = new CAmberDihedral[MPHIA];
+
+    int j = 0;
+    for(int i=0; i < OldNPHIH; i++) {
+        if( OldDihedralWithHydrogens[i].GetICP() >= 0 ){
+            DihedralWithHydrogens[j] = OldDihedralWithHydrogens[i];
+            j++;
+        }
+    }
+
+    j = 0;
+    for(int i=0; i < OldMPHIA; i++) {
+        if( OldDihedralWithoutHydrogens[i].GetICP() >= 0 ){
+            DihedralWithoutHydrogens[j] = OldDihedralWithoutHydrogens[i];
+            j++;
+        }
+    }
+
+    // clean old data
+    if( OldDihedralWithHydrogens )     delete[] OldDihedralWithHydrogens;
+    if( OldDihedralWithoutHydrogens )  delete[] OldDihedralWithoutHydrogens;
+}
+
 //==============================================================================
 //------------------------------------------------------------------------------
 //==============================================================================

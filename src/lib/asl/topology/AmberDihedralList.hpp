@@ -105,6 +105,9 @@ public:
     /// overload assigment operator
     void operator = (const CAmberDihedralList& src);
 
+    /// remove illegal dihedrals (ICP < 0)
+    void RemoveIllegalDihedrals(void);
+
 // section of private data ----------------------------------------------------
 private:
     int NPHIH;    //NPHIH  : number of dihedrals containing hydrogen
