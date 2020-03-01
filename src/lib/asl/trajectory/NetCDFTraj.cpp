@@ -388,11 +388,11 @@ bool CNetCDFTraj::WriteHeader(CAmberTopology* p_top)
 
 //------------------------------------------------------------------------------
 
-bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
+int CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
 {
     if( Mode != AMBER_TRAJ_READ ){
         ES_ERROR("illegal mode, it should be AMBER_TRAJ_READ");
-        return(false);
+        return(-1);
     }
 
     if( p_snap == NULL ){
@@ -401,7 +401,7 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
 
     if( p_snap->GetTopology() == NULL ) {
         ES_ERROR("snapshot does not have assigned topology");
-        return(false);
+        return(-1);
     }
 
     if( p_snap->GetNumberOfAtoms() != ActualAtoms ) {
@@ -409,7 +409,7 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
         error << "inconsistent number of atoms, trajectory: " << ActualAtoms;
         error << " topology: " << p_snap->GetNumberOfAtoms();
         ES_ERROR(error);
-        return(false);
+        return(-1);
     }
 
     bool has_box = p_snap->GetTopology()->BoxInfo.GetType() != AMBER_BOX_NONE;
@@ -417,24 +417,24 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
         CSmallString error;
         error << "topology and snapshot has different info about box presence";
         ES_ERROR(error);
-        return(false);
+        return(-1);
     }
 
     if( CoordinateVID < 0 ) {
         CSmallString error;
         error << "ReadHeader must be called before ReadSnapshot";
         ES_ERROR(error);
-        return(false);
+        return(-1);
     }
 
     if( Coordinates == NULL ) {
         CSmallString error;
         error << "Coordinates are NULL";
         ES_ERROR(error);
-        return(false);
+        return(-1);
     }
 
-    if( CurrentSnapshot >= TotalSnapshots ) return(false); // end of trajectory
+    if( CurrentSnapshot >= TotalSnapshots ) return(1); // end of trajectory
 
     int     err;
     size_t  start[3],count[3];
@@ -452,7 +452,7 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
         CSmallString error;
         error << "unable to get coordinates (" << nc_strerror(err) << ")";
         ES_ERROR(error);
-        return(false);
+        return(-1);
     }
 
     int j=0;
@@ -478,7 +478,7 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
             CSmallString error;
             error << "unable to get cell length (" << nc_strerror(err) << ")";
             ES_ERROR(error);
-            return(false);
+            return(-1);
         }
         CPoint tmp;
         tmp.x =  CellLength[0];
@@ -491,7 +491,7 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
             CSmallString error;
             error << "unable to get cell length (" << nc_strerror(err) << ")";
             ES_ERROR(error);
-            return(false);
+            return(-1);
         }
 
         tmp.x =  CellAngle[0];
@@ -508,13 +508,13 @@ bool CNetCDFTraj::ReadSnapshot(CAmberRestart* p_snap)
         CSmallString error;
         error << "unable to get time (" << nc_strerror(err) << ")";
         ES_ERROR(error);
-        return(false);
+        return(-1);
     }
     p_snap->SetTime(Time);
 
     CurrentSnapshot++;
 
-    return(true);
+    return(0);
 }
 
 //------------------------------------------------------------------------------

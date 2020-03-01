@@ -98,13 +98,15 @@ public:
     const CSmallString  GetTitle(void);
 
     /// set title, title is written to file in OpenTrajectoryFile or AssignTrajectoryToFile method
-    void                SetTitle(const CSmallString& title);
+    void  SetTitle(const CSmallString& title);
 
     /// read snapshot
-    bool ReadSnapshot(void);
+    /// 0 - OK, 1 - EOF, < 0 - some error
+    int ReadSnapshot(void);
 
     /// read snapshot
-    bool ReadSnapshot(CAmberRestart* p_rst);
+    /// 0 - OK, 1 - EOF, < 0 - some error
+    int ReadSnapshot(CAmberRestart* p_rst);
 
     /// write snapshot
     bool WriteSnapshot(void);
@@ -144,7 +146,7 @@ private:
     char                    Title[81];
     int                     NumOfSnapshots;
 
-    bool ReadSnapshotASCII(CAmberRestart* p_rst);
+    int  ReadSnapshotASCII(CAmberRestart* p_rst);
     bool WriteSnapshotASCII(CAmberRestart* p_rst);
 };
 

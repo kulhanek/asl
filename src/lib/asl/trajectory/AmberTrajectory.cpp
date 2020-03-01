@@ -153,7 +153,7 @@ bool CAmberTrajectory::PrintInfo(const CSmallString& name,
 
     if( Format != AMBER_TRAJ_NETCDF ) {
         fprintf(p_out," Number of snapshots : (scanning in progress, please wait)\n");
-        while( ReadSnapshot() ) number_of_snapshots++;
+        while( ReadSnapshot() == 0 ) number_of_snapshots++;
     } else {
         number_of_snapshots = NetCDF->TotalSnapshots;
     }
@@ -412,11 +412,11 @@ ETrajectoryOpenMode CAmberTrajectory::GetOpenMode(void)
 //------------------------------------------------------------------------------
 //==============================================================================
 
-bool CAmberTrajectory::ReadSnapshot(void)
+int CAmberTrajectory::ReadSnapshot(void)
 {
     if( Snapshot == NULL ) {
         ES_ERROR("Snapshot is NULL");
-        return(false);
+        return(-1);
     }
 
     if( NetCDF != NULL ) {
@@ -428,25 +428,25 @@ bool CAmberTrajectory::ReadSnapshot(void)
 
 //---------------------------------------------------------------------------
 
-bool CAmberTrajectory::ReadSnapshot(CAmberRestart* p_rst)
+int CAmberTrajectory::ReadSnapshot(CAmberRestart* p_rst)
 {
     if( Topology == NULL ) {
         ES_ERROR("Topology is NULL");
-        return(false);
+        return(-1);
     }
     if( p_rst == NULL ) {
         ES_ERROR("p_rst is NULL");
-        return(false);
+        return(-1);
     }
     if( p_rst->GetTopology()->AtomList.GetNumberOfAtoms() != Topology->AtomList.GetNumberOfAtoms() ) {
         ES_ERROR("incompatible number of atoms in restart and topology");
-        return(false);
+        return(-1);
     }
 
     if( p_rst->GetNumberOfAtoms() == 0 ) {
         if( p_rst->Create() == false ) {
             ES_ERROR("unable to initialize snapshot");
-            return(false);
+            return(-1);
         }
     }
 
@@ -545,13 +545,19 @@ int CAmberTrajectory::GetNumberOfSnapshots(void)
 //------------------------------------------------------------------------------
 //==============================================================================
 
-bool CAmberTrajectory::ReadSnapshotASCII(CAmberRestart* p_rst)
+int CAmberTrajectory::ReadSnapshotASCII(CAmberRestart* p_rst)
 {
-    if( Topology == NULL ) return(false);
-    if( p_rst == NULL ) return(false);
+    if( Topology == NULL ){
+        ES_ERROR("Topology is NULL");
+        return(-1);
+    }
+    if( p_rst == NULL ){
+        ES_ERROR("p_rst is NULL");
+        return(-1);
+    }
     if( TrajectoryFile == NULL ) {
         ES_ERROR("TrajectoryFile is NULL");
-        return(false);
+        return(-1);
     }
 
     CFortranIO fortranio(TrajectoryFile,true);
@@ -559,26 +565,37 @@ bool CAmberTrajectory::ReadSnapshotASCII(CAmberRestart* p_rst)
     fortranio.SetFormat("10E8.3");
 
     CPoint* p_data = p_rst->Positions;
-    if( p_data == NULL ) return(false);
+    if( p_data == NULL ){
+        ES_ERROR("p_rst->Positions is NULL");
+        return(-1);
+    }
     bool result = true;
 
     for(int i=0; i < p_rst->GetNumberOfAtoms(); i++) {
         result &= fortranio.ReadReal(p_data->x);
         result &= fortranio.ReadReal(p_data->y);
         result &= fortranio.ReadReal(p_data->z);
-        if( result == false ) return(false);
+        if( (result == false) && (i == 0) ) return(1);  // end of file
+        if( (result == false) && (i != 0) ){
+            ES_ERROR("premature end of file - atom positions");
+            return(-1); // premature end of file
+        }
         p_data++;
     }
-    if( Type == AMBER_TRAJ_VXYZ ) return(true);
-    if( Topology->BoxInfo.GetType() == AMBER_BOX_NONE ) return(true);
+    if( Type == AMBER_TRAJ_VXYZ ) return(0);
+    if( Topology->BoxInfo.GetType() == AMBER_BOX_NONE ) return(0);
 
     fortranio.SetFormat("3E8.3");
 
     result &= fortranio.ReadReal(p_rst->Box.x);
     result &= fortranio.ReadReal(p_rst->Box.y);
     result &= fortranio.ReadReal(p_rst->Box.z);
+    if( result == false ){
+        ES_ERROR("premature end of file - box information");
+        return(-1); // premature end of file
+    }
 
-    return(result);
+    return(0);
 }
 
 //------------------------------------------------------------------------------

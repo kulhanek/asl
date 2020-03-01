@@ -45,7 +45,8 @@ public:
     bool WriteHeader(CAmberTopology* p_top);
 
     /// read trajectory snapshot
-    bool ReadSnapshot(CAmberRestart* p_snap);
+    /// 0 - OK, 1 - EOF, < 0 - some error
+    int ReadSnapshot(CAmberRestart* p_snap);
 
     /// write trajectory snapshot
     bool WriteSnapshot(CAmberRestart* p_snap);
