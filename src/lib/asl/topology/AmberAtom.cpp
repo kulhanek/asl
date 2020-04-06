@@ -318,7 +318,7 @@ int CAmberAtom::GetAtomIndex(void) const
 
 int CAmberAtom::GuessZ(void) const
 {
-    if( ATOMIC_NUMBER != 0 ) return(ATOMIC_NUMBER);
+    if( ATOMIC_NUMBER > 0 ) return(ATOMIC_NUMBER);
     int z = PeriodicTable.SearchZByMass(this->GetMass());
     return (z);
 }
