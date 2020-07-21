@@ -92,11 +92,9 @@ bool CAmberRestart::Create(void)
 
     Positions = new CPoint[NumberOfAtoms];
     if( Positions == NULL ) return(false);
-    memset(Positions,0,NumberOfAtoms*sizeof(CPoint));
 
     Velocities = new CPoint[NumberOfAtoms];
     if( Velocities == NULL ) return(false);
-    memset(Velocities,0,NumberOfAtoms*sizeof(CPoint));
 
     Box.x = 0.0;
     Box.y = 0.0;
