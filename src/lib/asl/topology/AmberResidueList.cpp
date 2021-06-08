@@ -220,8 +220,9 @@ bool CAmberResidueList::LoadResidueIPRES(FILE* p_file,
         }
         if( p_res->IPRES == 0 ){
             CSmallString error;
-            error << "IPRES is zero for residue: " << i+1 << "(topology was most likely incorectly built)";
+            error << "IPRES is zero for residue: " << i+1 << " (topology was most likely incorectly built)";
             ES_ERROR(error);
+            return(false);
         }
         if( i != 0 ) {
             p_prev->NumOfAtoms = p_res->IPRES - p_prev->IPRES;
