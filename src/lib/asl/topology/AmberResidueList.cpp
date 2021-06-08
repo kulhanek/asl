@@ -218,6 +218,11 @@ bool CAmberResidueList::LoadResidueIPRES(FILE* p_file,
             ES_ERROR("unable to load IPRES item");
             return(false);
         }
+        if( p_res->IPRES == 0 ){
+            CSmallString error;
+            error << "IPRES is zero for residue: " << i+1 << "(topology was most likely incorectly built)";
+            ES_ERROR(error);
+        }
         if( i != 0 ) {
             p_prev->NumOfAtoms = p_res->IPRES - p_prev->IPRES;
             CAmberAtom* p_atom = p_atomlist->GetAtom(p_prev->IPRES-1);
