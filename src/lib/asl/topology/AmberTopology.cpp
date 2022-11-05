@@ -42,6 +42,8 @@ CAmberTopology::CAmberTopology(void)
     Version = AMBER_VERSION_7;
     NHPARM = 0;
     NPARM = 0;
+    NCOPY = 0;
+    NCOPY_Read = false;
     TotalMass = 0;
 
     // amber_7 defaults
@@ -1001,7 +1003,7 @@ bool CAmberTopology::LoadFakeTopologyFromG96(FILE* p_fin)
     }
 
 // atoms ----
-    AtomList.InitFields(natoms,0,0);
+    AtomList.InitFields(natoms,0,0,0);
     rit = residues.begin();
     int i = 0;
     while(rit != rie){
@@ -2479,23 +2481,23 @@ bool CAmberTopology::LoadBasicInfo(FILE* p_top,const char* p_format,EAmberVersio
     }
 
     int NUMEXTRA = 0;
+        NCOPY = 0;
+        NCOPY_Read = false;
+
     // http://ambermd.org/formats.html
     if( version != AMBER_VERSION_6 ) {
         if( fortranio.ReadInt(NUMEXTRA) == false ) {
             ES_ERROR("unable load NUMEXTRA item");
             return(false);
         }
-    }
-    for(int i=0; i < NUMEXTRA; i++){
-        int dummy;
-        if( fortranio.ReadInt(dummy) == false ) {
-            ES_ERROR("unable load dummy item after NUMEXTRA item");
-            return(false);
+        CFortranIO fortranio_se(p_top,true);
+        if( fortranio_se.ReadInt(NCOPY) == true ) {
+            NCOPY_Read = true;
         }
     }
 
     // init all fields
-    AtomList.InitFields(NATOM,IFPERT,IFPOL);
+    AtomList.InitFields(NATOM,IFPERT,IFPOL,NUMEXTRA);
     ResidueList.InitFields(NRES,NMXRS);
     BondList.InitFields(NBONH,MBONA,NUMBND,NBONA,NBPER,MBPER);
     AngleList.InitFields(NTHETH,MTHETA,NUMANG,NTHETA,NGPER,MGPER);
@@ -2665,9 +2667,15 @@ bool CAmberTopology::SaveBasicInfo(FILE* p_top,const char* p_format,EAmberVersio
     }
 
     if( version != AMBER_VERSION_6 ) {
-        if( fortranio.WriteInt(AtomList.IFPOL) == false ) {
-            ES_ERROR("unable save IFPOL item");
+        if( fortranio.WriteInt(AtomList.NUMEXTRA) == false ) {
+            ES_ERROR("unable save NUMEXTRA item");
             return(false);
+        }
+        if( NCOPY_Read ) {
+            if( fortranio.WriteInt(NCOPY) == false ) {
+                ES_ERROR("unable save NCOPY item");
+                return(false);
+            }
         }
     }
 

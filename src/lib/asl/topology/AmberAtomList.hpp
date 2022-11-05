@@ -37,7 +37,7 @@ public:
     ~CAmberAtomList(void);
 
     /// init all fields - old data are destroyed
-    void InitFields(int iNATOM,int iIFPERT,int iIFPOL);
+    void InitFields(int iNATOM,int iIFPERT,int iIFPOL,int iNUMEXTRA);
 
     /// prepare for new data
     void FreeFields(void);
@@ -73,6 +73,9 @@ private:
 
     /// IFPOL : set to 1 if polarization info is to be read in
     int         IFPOL;
+
+    /// NUMEXTRA Number of extra points in the topology file
+    int         NUMEXTRA;
 
     // options
     bool            AtomicNumberLoaded;

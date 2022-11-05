@@ -48,13 +48,14 @@ CAmberAtomList::~CAmberAtomList(void)
 //------------------------------------------------------------------------------
 //==============================================================================
 
-void CAmberAtomList::InitFields(int iNATOM,int iIFPERT,int iIFPOL)
+void CAmberAtomList::InitFields(int iNATOM,int iIFPERT,int iIFPOL,int iNUMEXTRA)
 {
     FreeFields();
 
     NATOM = iNATOM;
     IFPERT = iIFPERT;
     IFPOL = iIFPOL;
+    NUMEXTRA = iNUMEXTRA;
 
     if( NATOM > 0 ) Atoms = new CAmberAtom[NATOM];
 
@@ -122,7 +123,7 @@ void CAmberAtomList::SetRadiusSet(const CSmallString& set_name)
 void CAmberAtomList::operator = (const CAmberAtomList& src)
 {
 //    void InitFields(int iNATOM,int iIFPERT,int iIFPOL);
-    InitFields(src.NATOM,src.IFPERT,src.IFPOL);
+    InitFields(src.NATOM,src.IFPERT,src.IFPOL,src.NUMEXTRA);
 
     // copy name of radius set
     RadiusSet = src.RadiusSet;

@@ -146,6 +146,10 @@ private:
 
     /// NPARM  : currently not used
     int NPARM;
+
+    /// Number of PIMD slices or number of beads
+    int  NCOPY;
+    bool NCOPY_Read;
     
     // total mass in g/mol
     double      TotalMass;

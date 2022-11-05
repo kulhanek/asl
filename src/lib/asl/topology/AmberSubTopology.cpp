@@ -134,6 +134,7 @@ bool CAmberSubTopology::PrepareAtoms(void)
     int iNATOM;
     int iIFPERT;
     int iIFPOL;
+    int iNUMEXTRA;
 
     if( VerboseMode == false ) {
         fprintf(ReportFile,"Preparing atoms ...\n");
@@ -154,7 +155,10 @@ bool CAmberSubTopology::PrepareAtoms(void)
         iIFPOL = 0;
     }
 
-    AtomList.InitFields(iNATOM,iIFPERT,iIFPOL);
+    // FIXME
+    iNUMEXTRA = 0;
+
+    AtomList.InitFields(iNATOM,iIFPERT,iIFPOL,iNUMEXTRA);
 
     // set atom data --------------------------------------------------------------
     int j = 0;
