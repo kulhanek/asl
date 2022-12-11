@@ -118,11 +118,19 @@ bool CAmberSubTopology::PrepareNewTopology(void)
         AtomMapper = NULL;
     }
 
+    CSmallString title;
+
     if( CrossBonds == true ) {
-        SetTitle("cut_topology_with_cross_bonds");
+        title = "cut_topology_with_cross_bonds";
     } else {
-        SetTitle("cut_topology");
+        title = "cut_topology";
     }
+
+    title += " [";
+    title += LibBuildVersion_ASL;
+    title += "]";
+
+    SetTitle(title);
 
     return(result);
 }
