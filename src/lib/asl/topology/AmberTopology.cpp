@@ -130,6 +130,7 @@ void CAmberTopology::Clean(void)
     NonBondedList.FreeFields();
     BoxInfo.FreeFields();
     CapInfo.FreeFields();
+    CMAPList.FreeFields();
 
     FakeTopology = false;
 }
@@ -518,6 +519,11 @@ void CAmberTopology::PrintInfo(bool short_info,FILE* p_out)
     fprintf(p_out," Number of X-H bonds : % 8d\n",BondList.NBONH);
     fprintf(p_out," Number of angles    : % 8d\n",AngleList.NTHETH+AngleList.MTHETA);
     fprintf(p_out," Number of dihedrals : % 8d\n",DihedralList.NPHIH+DihedralList.MPHIA);
+    if( CMAPList.cmap_loaded ){
+    fprintf(p_out," CMAP                : yes (%d/%d)\n",CMAPList.cmap_term_count,CMAPList.cmap_type_count);
+    } else {
+    fprintf(p_out," CMAP                : no\n");
+    }
     if( DihedralList.SCEEFactorsLoaded ){
     fprintf(p_out," SCEE factors loaded : yes\n");
     } else {
@@ -1922,6 +1928,13 @@ bool CAmberTopology::LoadAmber7(FILE* p_top)
                 continue;
             }
         }
+        //-----------------------------------
+        // CMAP
+        if( CMAPList.IsCMAPSection(p_sname) ){
+            if( CMAPList.LoadCMAPSection(p_top,p_sname) == false ) return(false);
+            continue;
+        }
+        //-----------------------------------
         // section was not found
         CSmallString warning;
         warning << "unrecognized section in topology '" << p_sname << ";";
@@ -2254,6 +2267,8 @@ bool CAmberTopology::SaveAmber7(FILE* p_top)
         if( AtomList.SavePertAtomCharges(p_top,fPERT_CHARGE) == false ) return(false);
     }
 
+    if( CMAPList.SaveCMAPSections(p_top) == false ) return(false);
+
     return(true);
 }
 
@@ -2273,7 +2288,7 @@ bool CAmberTopology::SaveSectionHeader(FILE* p_top,const char* p_section_name,
         return(false);
     }
 
-    for(int i = outputlen; i < 80; i++) fputc(' ',p_top);
+    // for(int i = outputlen; i < 80; i++) fputc(' ',p_top);
     fputc('\n',p_top);
 
     if( (outputlen = fprintf(p_top,"%%FORMAT(%s)",(char*)p_section_format)) <= 0 ) {
@@ -2283,7 +2298,7 @@ bool CAmberTopology::SaveSectionHeader(FILE* p_top,const char* p_section_name,
         return(false);
     }
 
-    for(int i = outputlen; i < 80; i++) fputc(' ',p_top);
+    // for(int i = outputlen; i < 80; i++) fputc(' ',p_top);
     fputc('\n',p_top);
 
     return(true);

@@ -33,6 +33,7 @@
 #include <AmberNonBondedList.hpp>
 #include <AmberBox.hpp>
 #include <AmberCap.hpp>
+#include <AmberCMAPList.hpp>
 
 //---------------------------------------------------------------------------
 
@@ -128,6 +129,7 @@ public:
     CAmberNonBondedList NonBondedList;
     CAmberBox           BoxInfo;
     CAmberCap           CapInfo;
+    CAmberCMAPList      CMAPList;
     bool                FakeTopology;
 
 // section of private data ----------------------------------------------------

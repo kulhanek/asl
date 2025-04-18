@@ -25,6 +25,7 @@ SET(ASL_SRC
         topology/AmberDihedralList.cpp
         topology/AmberResidueList.cpp
         topology/AmberNonBondedList.cpp
+        topology/AmberCMAPList.cpp
 
      # special parts --------
         topology/AmberBox.cpp
