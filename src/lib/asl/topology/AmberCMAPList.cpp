@@ -100,16 +100,17 @@ bool CAmberCMAPList::LoadCMAPSection(FILE* p_file,const char* p_section)
         fortranio.SetFormat(fCMAP_RESOLUTION);
 
         int resolution_length = cmap_type_count;
-        if( resolution_length <= 0 ){
+        if( resolution_length < 0 ){
             ES_ERROR("illegal resolution_length");
             return(false);
         }
-
-        cmap_resolution.CreateVector(resolution_length);
-        for(int i=0; i<resolution_length; i++) {
-            if( fortranio.ReadInt(cmap_resolution[i]) == false ) {
-                ES_ERROR("unable to load cmap_resolution item");
-                return(false);
+        if( resolution_length > 0 ) {
+            cmap_resolution.CreateVector(resolution_length);
+            for(int i=0; i<resolution_length; i++) {
+                if( fortranio.ReadInt(cmap_resolution[i]) == false ) {
+                    ES_ERROR("unable to load cmap_resolution item");
+                    return(false);
+                }
             }
         }
         cmap_loaded = true;
@@ -179,19 +180,21 @@ bool CAmberCMAPList::LoadCMAPSection(FILE* p_file,const char* p_section)
         fortranio.SetFormat(fCMAP_INDEX);
 
         int index_length = cmap_term_count*6;
-        if( index_length <= 0 ){
+        if( index_length < 0 ){
             ES_ERROR("illegal index_length");
             return(false);
         }
 
-        cmap_index.CreateVector(index_length);
-        for(int i=0; i<index_length; i++) {
-            if( fortranio.ReadInt(cmap_index[i]) == false ) {
-                ES_ERROR("unable to load cmap_index item");
-                return(false);
+        if( index_length > 0 ) {
+            cmap_index.CreateVector(index_length);
+            for(int i=0; i<index_length; i++) {
+                if( fortranio.ReadInt(cmap_index[i]) == false ) {
+                    ES_ERROR("unable to load cmap_index item");
+                    return(false);
+                }
             }
+            cmap_loaded = true;
         }
-        cmap_loaded = true;
         return(true);
     }
 

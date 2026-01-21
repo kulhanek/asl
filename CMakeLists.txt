@@ -109,8 +109,8 @@ IF(NOT DEFINED COMPOSITE_PROJECT)
     SET(CMAKE_C_FLAGS_DEBUG "-g -O0")
     SET(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Werror -pedantic-errors -Wundef -Wno-long-long")
 
-    #SET(CMAKE_BUILD_TYPE Release)
-    SET(CMAKE_BUILD_TYPE Debug)
+    SET(CMAKE_BUILD_TYPE Release)
+    #SET(CMAKE_BUILD_TYPE Debug)
 ENDIF(NOT DEFINED COMPOSITE_PROJECT)
 
 # ==============================================================================
